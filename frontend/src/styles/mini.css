@@ -1,0 +1,293 @@
+/* Mini Orb window: a frameless transparent Electron surface. The page itself
+   must not paint a background, or the whole rectangle would become an opaque
+   box floating over other apps. */
+html[data-surface="mini"],
+html[data-surface="mini"] body,
+html[data-surface="mini"] #root {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  background: transparent;
+  overflow: hidden;
+}
+
+.mini-root {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 8px 10px;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-sans);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-app-region: no-drag;
+  overflow: hidden;
+}
+
+.mini-stage {
+  position: relative;
+  flex: none;
+  width: 148px;
+  height: 148px;
+}
+
+.mini-root--medium .mini-stage {
+  width: 208px;
+  height: 208px;
+}
+
+.mini-orb {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  cursor: grab;
+  touch-action: none;
+}
+
+.mini-root[data-dragging="true"] .mini-orb {
+  cursor: grabbing;
+}
+
+.mini-orb .orb {
+  width: 100%;
+  height: 100%;
+  background: none;
+  transform: none;
+  will-change: auto;
+}
+
+.mini-root[data-emergency="true"] .mini-orb .orb {
+  filter: drop-shadow(0 0 18px color-mix(in srgb, var(--danger) 60%, transparent));
+}
+
+/* The ring is driven by real state: it exists only while the microphone is
+   actually listening. Nothing here animates when the mic is off. */
+.mini-listen-ring {
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-bright);
+  box-shadow:
+    0 0 12px color-mix(in srgb, var(--accent) 55%, transparent),
+    inset 0 0 12px color-mix(in srgb, var(--accent) 26%, transparent);
+  pointer-events: none;
+  animation: mini-ring-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes mini-ring-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.985);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.mini-flags {
+  position: absolute;
+  left: 50%;
+  bottom: -4px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.mini-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 5px;
+  border-radius: var(--radius-pill);
+  border: 1px solid color-mix(in srgb, var(--danger) 55%, transparent);
+  background: rgba(20, 4, 4, 0.82);
+  color: #ffd9d4;
+  font-size: 8.5px;
+  font-weight: var(--weight-strong);
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.mini-flag--mic {
+  border-color: var(--accent-line);
+  background: rgba(24, 17, 3, 0.82);
+  color: var(--accent-bright);
+}
+
+.mini-flag i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--danger);
+  box-shadow: 0 0 5px color-mix(in srgb, var(--danger) 80%, transparent);
+}
+
+.mini-flag--mic i {
+  background: var(--accent-bright);
+}
+
+.mini-caption {
+  margin: 0;
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: rgba(9, 7, 11, 0.9);
+  color: var(--text);
+  font-size: 11px;
+  line-height: 1.35;
+  text-align: center;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.mini-emergency {
+  margin: 0;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid color-mix(in srgb, var(--danger) 70%, transparent);
+  background: rgba(40, 6, 4, 0.92);
+  color: #ffd9d4;
+  font-size: 9px;
+  font-weight: var(--weight-strong);
+  letter-spacing: 0.12em;
+}
+
+.mini-approval {
+  position: absolute;
+  z-index: 2;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  padding: 7px 8px 6px;
+  border: 1px solid var(--accent-line);
+  border-radius: var(--radius-md);
+  background: rgba(10, 8, 12, 0.97);
+  box-shadow: var(--shadow-1);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mini-approval__label {
+  margin: 0;
+  font-size: 11px;
+  font-weight: var(--weight-strong);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.mini-approval__meta {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.mini-approval__actions {
+  display: flex;
+  gap: 5px;
+}
+
+.mini-approval__actions button {
+  flex: 1;
+  min-height: 24px;
+  padding: 2px 6px;
+  border: 1px solid var(--accent-line);
+  border-radius: var(--radius-xs);
+  background: var(--accent);
+  color: #1a1200;
+  font-size: 10.5px;
+  font-weight: var(--weight-strong);
+}
+
+.mini-approval__actions button.is-deny {
+  background: transparent;
+  border-color: var(--border-strong);
+  color: var(--text-soft);
+}
+
+.mini-approval__actions button:hover {
+  filter: brightness(1.08);
+}
+
+.mini-approval__timer {
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.mini-approval__timer span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 250ms linear;
+}
+
+.mini-approval__hint {
+  color: var(--text-muted);
+  font-size: 8.5px;
+  text-align: center;
+}
+
+.mini-root--fallback {
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+  padding: 16px;
+}
+
+.mini-fallback-card {
+  max-width: 360px;
+  padding: 16px 18px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-solid);
+  text-align: center;
+}
+
+.mini-fallback-card strong {
+  display: block;
+  margin-bottom: 6px;
+  font-family: var(--font-display);
+  font-size: 16px;
+  letter-spacing: 0.02em;
+}
+
+.mini-fallback-card p {
+  margin: 0 0 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.mini-fallback-card a {
+  color: var(--accent-bright);
+  font-size: 12px;
+}
+
+/* The full window stays alive behind the mini orb (voice, gestures) but
+   Chromium keeps it marked "visible", so its HUD animations would keep
+   producing frames. Freeze them while mini mode is on. */
+html[data-mini-background='true'] *,
+html[data-mini-background='true'] *::before,
+html[data-mini-background='true'] *::after {
+  animation-play-state: paused !important;
+}

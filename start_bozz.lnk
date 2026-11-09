@@ -1,0 +1,32 @@
+@echo off
+:: BOZZ Desktop AI - Single Click Start
+:: Just double-click this file to start everything
+
+:: ============================================
+:: Step 1: Open Backend Terminal
+:: ============================================
+start "BOZZ_Backend" cmd /k "cd /d \"C:\\Users\\Marimuthu S\\Documents\\GitHub\\BOZZz\\backend\" & .venv\\Scripts\\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000"
+
+:: Wait for backend to initialize
+timeout /t 5 /nobreak >nul
+
+:: ============================================
+:: Step 2: Open Frontend Terminal
+:: ============================================
+start "BOZZ_Frontend" cmd /k "cd /d \"C:\\Users\\Marimuthu S\\Documents\\GitHub\\BOZZz\\frontend\" & npm run dev"
+
+echo.
+echo ============================================
+echo  BOZZ is starting up...
+echo ============================================
+echo.
+echo  Backend AI:  http://127.0.0.1:8000
+echo  Frontend:    http://localhost:5173
+echo.
+echo "  WAKE WORD: Say 'BOZZ' to wake the AI"
+echo "  MINIMIZE: Click TopBar Minimize2 button"
+echo "  MINI ORB: Press Ctrl+Alt+M to toggle"
+echo.
+echo  Both windows will open automatically.
+echo.
+pause

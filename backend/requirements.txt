@@ -1,0 +1,9 @@
+fastapi==0.162.0
+uvicorn[standard]==0.54.0
+pyautogui==0.9.54
+pynput==1.8.1
+pillow==11.3.0
+pycaw==20260927
+comtypes==1.4.17
+screen-brightness-control==0.27.2
+playwright==1.56.0

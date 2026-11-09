@@ -1,0 +1,540 @@
+/* L3DME local 3D model viewer */
+
+.l3dme-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 14px;
+  margin-top: 20px;
+  align-items: start;
+}
+
+.l3dme-stage {
+  position: relative;
+  min-width: 0;
+  height: clamp(380px, 62vh, 720px);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: radial-gradient(circle at 50% 38%, #1a1408 0%, #0a0703 68%);
+  box-shadow: var(--shadow-1);
+}
+
+.model-viewer {
+  position: absolute;
+  inset: 0;
+}
+
+.model-viewer canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: grab;
+}
+
+.model-viewer canvas:active {
+  cursor: grabbing;
+}
+
+.l3dme-overlay {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--accent-line);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--surface-solid) 88%, transparent);
+  color: var(--accent);
+  font-size: 12px;
+  transform: translateX(-50%);
+  backdrop-filter: blur(8px);
+}
+
+.l3dme-overlay svg {
+  width: 15px;
+  height: 15px;
+  animation: l3dme-spin 900ms linear infinite;
+}
+
+@keyframes l3dme-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.l3dme-error {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  right: 14px;
+  z-index: 3;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, #17090b 88%, transparent);
+  color: var(--danger);
+  backdrop-filter: blur(8px);
+}
+
+.l3dme-error svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  margin-top: 1px;
+}
+
+.l3dme-error div {
+  display: grid;
+  gap: 3px;
+}
+
+.l3dme-error strong {
+  font-size: 12px;
+}
+
+.l3dme-error span {
+  color: color-mix(in srgb, var(--danger) 78%, #ffffff);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.l3dme-stage-hud {
+  position: absolute;
+  left: 14px;
+  bottom: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: calc(100% - 28px);
+  pointer-events: none;
+}
+
+.l3dme-stage-hud .workspace-chip {
+  background: color-mix(in srgb, var(--surface-solid) 82%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+.l3dme-hint {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 300px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--surface-solid) 82%, transparent);
+  color: var(--text-faint);
+  font-size: 10px;
+  line-height: 1.4;
+  text-align: right;
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+}
+
+.l3dme-hint svg {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 13px;
+}
+
+.l3dme-controls {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.l3dme-controls .workflow-panel {
+  padding: 14px 16px;
+}
+
+.l3dme-controls .workflow-panel h2 svg {
+  width: 15px;
+  height: 15px;
+}
+
+.l3dme-file-info {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0 0;
+}
+
+.l3dme-file-info div {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  gap: 8px;
+  font-size: 11px;
+}
+
+.l3dme-file-info dt {
+  color: var(--text-faint);
+}
+
+.l3dme-file-info dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-soft);
+}
+
+.l3dme-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 9px 11px;
+  border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--warn) 8%, transparent);
+  color: var(--warn);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.l3dme-warning svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+  margin-top: 1px;
+}
+
+.l3dme-mode-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.l3dme-chip {
+  padding: 6px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.l3dme-chip:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--accent-line);
+}
+
+.l3dme-chip.is-active {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.l3dme-chip:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.l3dme-slider {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.l3dme-slider > span {
+  display: grid;
+  gap: 2px;
+  color: var(--text-soft);
+  font-size: 12px;
+}
+
+.l3dme-slider small {
+  color: var(--text-faint);
+  font-size: 10px;
+  font-weight: var(--weight-regular);
+  line-height: 1.4;
+}
+
+.l3dme-slider input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.l3dme-slider input[type="range"]:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.l3dme-button-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 14px;
+}
+
+.l3dme-button-grid .secondary-action {
+  width: 100%;
+  justify-content: center;
+  padding: 8px 10px;
+  font-size: 11px;
+}
+
+.l3dme-button-grid .secondary-action:last-child {
+  grid-column: 1 / -1;
+}
+
+.l3dme-parts {
+  display: grid;
+  gap: 5px;
+  max-height: 220px;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.l3dme-parts button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  background: var(--bg-raised);
+  color: var(--text-soft);
+  font-size: 11px;
+  text-align: left;
+}
+
+.l3dme-parts button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.l3dme-parts button small {
+  color: var(--text-faint);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.l3dme-parts button:hover {
+  border-color: var(--border-strong);
+}
+
+.l3dme-parts button.is-active {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.l3dme-parts button.is-active small {
+  color: var(--accent);
+}
+
+.l3dme-selected {
+  margin: 12px 0 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.l3dme-selected strong {
+  color: var(--text);
+  font-weight: var(--weight-strong);
+}
+
+.l3dme-commands {
+  margin-top: 14px;
+}
+
+.l3dme-commands p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.l3dme-commands p + p {
+  margin-top: 8px;
+}
+
+.l3dme-commands code {
+  padding: 1px 5px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg-raised);
+  color: var(--accent);
+  font-size: 11px;
+}
+
+@media (max-width: 1080px) {
+  .l3dme-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .l3dme-stage {
+    height: clamp(320px, 52vh, 560px);
+  }
+
+  .l3dme-controls {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .l3dme-stage {
+    height: 58vh;
+    min-height: 300px;
+  }
+
+  .l3dme-hint {
+    display: none;
+  }
+
+  .l3dme-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---------- Model intelligence ---------- */
+
+.l3dme-intel-parts {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0;
+  padding: 0;
+  list-style: none;
+  max-height: 340px;
+  overflow: auto;
+}
+
+.l3dme-intel-part {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-solid);
+}
+
+.l3dme-intel-part.is-confirmed {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--ok) 60%, var(--border));
+}
+
+.l3dme-intel-part.is-suggested {
+  border-style: dashed;
+}
+
+.l3dme-intel-part > button:first-child {
+  flex: 1;
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.l3dme-intel-part > button:first-child.is-active {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.l3dme-intel-name {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 12px;
+  font-weight: var(--weight-medium);
+}
+
+.l3dme-intel-name em {
+  font-style: normal;
+  font-size: 10px;
+  color: var(--text-faint);
+}
+
+.l3dme-intel-part small {
+  font-size: 10px;
+  color: var(--text-faint);
+  line-height: 1.4;
+}
+
+.l3dme-intel-selected h3 {
+  margin: 12px 0 4px;
+  font-size: 14px;
+}
+
+.l3dme-intel-reasons {
+  margin: 6px 0;
+  padding-left: 18px;
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.l3dme-intel-label {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.l3dme-intel-label label,
+.l3dme-intel-note {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.l3dme-intel-label input,
+.l3dme-intel-note textarea {
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-solid);
+  color: var(--text);
+  font: inherit;
+}
+
+.l3dme-intel-ai {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+
+.l3dme-intel-ai h3 {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 0 0 4px;
+  font-size: 13px;
+}
+
+.l3dme-intel-ai pre,
+.l3dme-intel-selected pre {
+  max-height: 180px;
+  overflow: auto;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-solid);
+  font-size: 10px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.l3dme-intel-ai-answer {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}

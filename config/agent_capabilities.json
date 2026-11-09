@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "profiles": [
+    {
+      "id": "browser-generic",
+      "name": "Browser (generic)",
+      "version": "1.0.0",
+      "os": "Windows",
+      "identification": "Playwright Chromium with the BOZZ agent profile",
+      "documentation": [
+        "https://playwright.dev/python/docs/api/class-page",
+        "https://playwright.dev/python/docs/aria-snapshots"
+      ],
+      "methods": ["browser_dom"],
+      "supported_actions": [
+        { "id": "browser.open", "tier": 1 },
+        { "id": "browser.inspect", "tier": 1 },
+        { "id": "browser.search", "tier": 1 },
+        { "id": "browser.read_text", "tier": 1 },
+        { "id": "browser.scroll", "tier": 1 },
+        { "id": "browser.click_link", "tier": 1 },
+        { "id": "browser.verify", "tier": 1 },
+        { "id": "browser.screenshot", "tier": 1 },
+        { "id": "browser.type", "tier": 2 },
+        { "id": "browser.click", "tier": 2 },
+        { "id": "browser.download", "tier": 2 }
+      ],
+      "common_workflows": [
+        "Open an allowlisted page and read its visible text",
+        "Search a page and open a result by visible title"
+      ],
+      "verification_methods": ["url_contains", "title_contains", "text_contains", "element_present", "field_value_contains"],
+      "known_limitations": [
+        "Only pages that use standard HTML controls and links",
+        "No login, payment, upload of unknown files, posting, sending or installing",
+        "Depends on Playwright and a Chromium browser being installed"
+      ],
+      "recovery": [
+        "Re-inspect the page and retry once with a visible label",
+        "Dismiss a cookie banner by declining it",
+        "Stop and ask the user when the page state is ambiguous"
+      ],
+      "required_test_suite": "browser-playwright",
+      "notes": "Verified only when the browser-playwright suite records passing results. Otherwise Experimental, never claimed as working."
+    },
+    {
+      "id": "youtube-readonly",
+      "name": "YouTube (read-only)",
+      "version": "1.0.0",
+      "os": "Windows",
+      "identification": "www.youtube.com in the BOZZ agent browser",
+      "documentation": ["https://www.youtube.com/"],
+      "methods": ["browser_dom"],
+      "supported_actions": [
+        { "id": "browser.open", "tier": 1 },
+        { "id": "browser.search", "tier": 1 },
+        { "id": "browser.click_link", "tier": 1 },
+        { "id": "browser.read_text", "tier": 1 },
+        { "id": "browser.verify", "tier": 1 }
+      ],
+      "common_workflows": [
+        "Search YouTube and read the result titles",
+        "Open a video by title match and read its title, channel and date text"
+      ],
+      "verification_methods": ["url_contains", "title_contains", "text_contains"],
+      "known_limitations": [
+        "Read-only. Posting a comment is Tier 3 and refused before any browser call.",
+        "Layout changes can break a title match; the agent stops and asks instead of guessing",
+        "Not verified by a recorded passing suite in this milestone"
+      ],
+      "recovery": ["Re-inspect once", "Stop and ask the user if the title is missing"],
+      "required_test_suite": "youtube-readonly",
+      "notes": "Experimental. No automated YouTube layout suite has been recorded."
+    },
+    {
+      "id": "bozz-mock-site",
+      "name": "BOZZ mock site (test-only)",
+      "version": "1.0.0",
+      "os": "Windows",
+      "identification": "http://127.0.0.1:8000/agent/test-site",
+      "documentation": ["docs/computer-agent.md"],
+      "methods": ["browser_dom"],
+      "supported_actions": [
+        { "id": "browser.open", "tier": 1 },
+        { "id": "browser.search", "tier": 1 },
+        { "id": "browser.click_link", "tier": 1 },
+        { "id": "browser.read_text", "tier": 1 },
+        { "id": "browser.type", "tier": 2 },
+        { "id": "browser.verify", "tier": 1 }
+      ],
+      "common_workflows": [
+        "Search for A2D, open the newest video and prepare a comment draft",
+        "Decline the cookie banner and read the delayed result"
+      ],
+      "verification_methods": ["url_contains", "title_contains", "text_contains", "field_value_contains"],
+      "known_limitations": [
+        "The comment box is a mock. It stores nothing and has no submit route.",
+        "The site only runs from the local BOZZ backend"
+      ],
+      "recovery": ["Re-inspect", "Stop and ask"],
+      "required_test_suite": "mock-site-workflow",
+      "notes": "Verified only when the mock-site-workflow suite records passing results."
+    }
+  ]
+}

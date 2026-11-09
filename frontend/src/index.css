@@ -1,55 +1,74 @@
+@import './styles/theme.css';
+@import './styles/shell.css';
 
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap');
-
-:root {
-  font-family: 'Manrope', 'Segoe UI', sans-serif;
-  color: #e9e4d8;
-  background: #090a0c;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  font-optical-sizing: auto;
-  font-weight: 400;
-  --gold: #d6aa58;
-  --gold-bright: #f2cc7b;
-  --muted: #827d72;
-  --panel: rgba(20, 20, 20, 0.88);
-  --border: rgba(206, 168, 96, 0.15);
-  --mono: 'DM Mono', Consolas, monospace;
-}
-
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   min-width: 320px;
   min-height: 100%;
   margin: 0;
 }
 
+html {
+  background: var(--bg);
+}
+
 body {
   min-height: 100vh;
-  background:
-    radial-gradient(ellipse at 53% 42%, rgba(113, 78, 30, 0.09), transparent 42%),
-    #090a0c;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-weight: var(--weight-regular);
+  line-height: 1.5;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-button, input {
+button,
+input,
+textarea,
+select {
   font: inherit;
-}
-
-button {
   color: inherit;
 }
 
-button:focus-visible, input:focus-visible {
-  outline: 2px solid var(--gold);
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+a {
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
 
 ::selection {
-  background: rgba(214, 170, 88, 0.3);
-  color: white;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:focus-within {
+    scroll-behavior: auto;
+  }
 }

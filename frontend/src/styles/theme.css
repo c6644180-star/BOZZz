@@ -1,0 +1,146 @@
+/* BOZZ design tokens. Gold + white is the default identity; the Cyan theme is
+   an alternate palette only. Every surface in the app reads these variables —
+   component CSS never hardcodes a palette colour. */
+
+@font-face {
+  font-family: 'Rajdhani';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('../assets/fonts/rajdhani-500.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Rajdhani';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('../assets/fonts/rajdhani-600.woff2') format('woff2');
+}
+
+:root {
+  color-scheme: dark;
+
+  --font-sans: Inter, "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: 'Rajdhani', "Segoe UI", system-ui, sans-serif;
+  --weight-regular: 400;
+  --weight-strong: 600;
+
+  /* Warm near-black with a faint deep-navy tint, never pure blue-black. */
+  --bg: #07060a;
+  --bg-tint: #0b0e18;
+  --bg-raised: #0e0d13;
+  --surface: rgba(20, 18, 24, 0.62);
+  --surface-solid: #100e15;
+  --surface-hover: rgba(52, 45, 30, 0.55);
+  --glass-highlight: rgba(255, 246, 220, 0.08);
+
+  /* Warm neutral text. Muted is lifted slightly from #6f6858 so body copy
+     clears 4.5:1 on the near-black background; faint is decorative only. */
+  --text: #f4efe4;
+  --text-soft: #a89f8a;
+  --text-muted: #8c8371;
+  --text-faint: #6f6858;
+
+  --accent: #f5b800;
+  --accent-bright: #ffd34d;
+  --accent-strong: #fff6dc;
+  --accent-deep: #5a3a00;
+  --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
+  --accent-line: color-mix(in srgb, var(--accent) 38%, transparent);
+  --accent-glow: color-mix(in srgb, var(--accent) 26%, transparent);
+  --accent-wash: color-mix(in srgb, var(--accent) 7%, transparent);
+
+  --white: #ffffff;
+  --warm-white: #fff6dc;
+  --orb-core: #fffaf0;
+  --orb-deep: #0c0903;
+
+  --ok: #5fd38a;
+  --warn: #ff8c42;
+  --danger: #ff5a4d;
+
+  --border: rgba(245, 184, 0, 0.14);
+  --border-strong: rgba(245, 184, 0, 0.32);
+  --focus-ring: rgba(255, 211, 77, 0.9);
+
+  --radius-xs: 8px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  --dur-fast: 150ms;
+  --dur: 200ms;
+  --dur-slow: 250ms;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  --shadow-1: 0 12px 32px rgba(0, 0, 0, 0.45);
+  --shadow-2: 0 26px 70px rgba(0, 0, 0, 0.6);
+  --shadow-gold: 0 0 34px color-mix(in srgb, var(--accent) 18%, transparent);
+
+  --topbar-height: 56px;
+  --commandbar-height: 64px;
+  --page-gutter: clamp(16px, 4vw, 48px);
+
+  --z-topbar: 20;
+  --z-panel: 40;
+  --z-overlay: 50;
+}
+
+/* Alternate appearance. Kept for users who prefer the original cool palette. */
+[data-theme="cyan"] {
+  --bg: #02060c;
+  --bg-tint: #050d16;
+  --bg-raised: #06101a;
+  --surface: rgba(8, 17, 27, 0.78);
+  --surface-solid: #07111c;
+  --surface-hover: rgba(16, 31, 46, 0.9);
+  --glass-highlight: rgba(234, 250, 255, 0.06);
+
+  --text: #e8f3fb;
+  --text-soft: #b8c9d7;
+  --text-muted: #8fa6b6;
+  --text-faint: #6d8191;
+
+  --accent: #2bb8f0;
+  --accent-bright: #8fe3ff;
+  --accent-strong: #eafaff;
+  --accent-deep: #053245;
+  --orb-core: #eafaff;
+  --orb-deep: #04131f;
+
+  --warn: #f6c453;
+  --danger: #ff6b6b;
+
+  --border: rgba(137, 190, 219, 0.14);
+  --border-strong: rgba(137, 190, 219, 0.3);
+  --focus-ring: rgba(143, 227, 255, 0.9);
+  --shadow-gold: 0 0 34px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+/* In-app motion switch (Settings → Reduce motion) mirrors the OS preference. */
+[data-motion="reduced"] *,
+[data-motion="reduced"] *::before,
+[data-motion="reduced"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 1ms;
+    --dur: 1ms;
+    --dur-slow: 1ms;
+  }
+}

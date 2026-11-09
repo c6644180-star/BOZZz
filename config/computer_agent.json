@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "defaults": {
+    "enabled": false,
+    "approval_mode": "every_step",
+    "ask_new_domain": true,
+    "screenshot_to_provider": false,
+    "dry_run": true,
+    "max_steps": 25,
+    "max_seconds": 300,
+    "approval_timeout_seconds": 30
+  },
+  "domains": [
+    "youtube.com",
+    "www.youtube.com",
+    "wikipedia.org",
+    "www.wikipedia.org"
+  ],
+  "test_site": {
+    "hosts": ["127.0.0.1", "localhost"],
+    "path_prefix": "/agent/test-site",
+    "label": "BOZZ test site"
+  },
+  "window": {
+    "headed": true,
+    "profile_dirname": "agent-profile",
+    "screenshots_dirname": "agent-screenshots",
+    "downloads_dirname": "agent-downloads",
+    "observation_chars": 6000
+  },
+  "actions": [
+    { "id": "browser.open", "tier": 1, "label": "Open an allowlisted page", "risk": "low" },
+    { "id": "browser.search", "tier": 1, "label": "Search the current page", "risk": "low" },
+    { "id": "browser.scroll", "tier": 1, "label": "Scroll the page", "risk": "low" },
+    { "id": "browser.read_text", "tier": 1, "label": "Read page text", "risk": "low" },
+    { "id": "browser.inspect", "tier": 1, "label": "Inspect the page", "risk": "low" },
+    { "id": "browser.verify", "tier": 1, "label": "Verify an observed page result", "risk": "low" },
+    { "id": "browser.wait", "tier": 1, "label": "Wait for the page to update", "risk": "low" },
+    { "id": "browser.screenshot", "tier": 1, "label": "Save a screenshot of the agent browser", "risk": "low" },
+    { "id": "browser.close", "tier": 1, "label": "Close the agent browser", "risk": "low" },
+    { "id": "browser.click_link", "tier": 1, "label": "Open a link on the current page", "risk": "low" },
+    { "id": "browser.dismiss_consent", "tier": 1, "label": "Decline or close a cookie banner", "risk": "low" },
+    { "id": "browser.type", "tier": 2, "label": "Type into a form field", "risk": "medium" },
+    { "id": "browser.click", "tier": 2, "label": "Click a button that submits", "risk": "medium" },
+    { "id": "browser.download", "tier": 2, "label": "Download a file", "risk": "medium" },
+    { "id": "browser.upload", "tier": 2, "label": "Upload a file you picked", "risk": "medium" },
+    { "id": "app.launch", "tier": 2, "label": "Open an allowlisted app", "risk": "medium" },
+    { "id": "shell.run", "tier": 3, "label": "Run a shell, PowerShell or terminal", "risk": "high" },
+    { "id": "script.run", "tier": 3, "label": "Run a script or installer", "risk": "high" },
+    { "id": "file.delete", "tier": 3, "label": "Delete a file or folder", "risk": "high" },
+    { "id": "file.move", "tier": 3, "label": "Move a file or folder", "risk": "high" },
+    { "id": "file.rename", "tier": 3, "label": "Rename a file or folder", "risk": "high" },
+    { "id": "system.settings", "tier": 3, "label": "Change system settings", "risk": "high" },
+    { "id": "app.install", "tier": 3, "label": "Install or uninstall software", "risk": "high" },
+    { "id": "purchase.pay", "tier": 3, "label": "Buy, pay or transfer money", "risk": "high" },
+    { "id": "message.send", "tier": 3, "label": "Send a message", "risk": "high" },
+    { "id": "email.send", "tier": 3, "label": "Send an email", "risk": "high" },
+    { "id": "post.comment", "tier": 3, "label": "Post a comment or publish content", "risk": "high" },
+    { "id": "account.change", "tier": 3, "label": "Change account details or a password", "risk": "high" },
+    { "id": "security.disable", "tier": 3, "label": "Disable security software", "risk": "high" },
+    { "id": "keyboard.any", "tier": 3, "label": "Press arbitrary keys", "risk": "high" },
+    { "id": "typing.free_text", "tier": 3, "label": "Type free text outside a form field", "risk": "high" }
+  ]
+}
