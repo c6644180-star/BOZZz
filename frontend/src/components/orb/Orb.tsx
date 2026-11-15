@@ -45,6 +45,36 @@ export function Orb({
   const [ripple, setRipple] = useState<'success' | 'failure' | null>(null)
   const frozen = paused || hidden
 
+  // ────────────────────────────────────────────────
+  // NEW: Listen to HGI CSS variables and drive the 3D orb
+  // ────────────────────────────────────────────────
+  useEffect(() => {
+    let raf = 0
+    let lastRotate = 0
+    let lastZoom = 1
+
+    const tick = () => {
+      const root = document.documentElement
+      const rotateStr = getComputedStyle(root).getPropertyValue('--hgi-orb-rotate').trim()
+      const zoomStr = getComputedStyle(root).getPropertyValue('--hgi-orb-zoom').trim()
+
+      const rotate = parseFloat(rotateStr || '0') || 0
+      const zoom = parseFloat(zoomStr || '1') || 1
+
+      // Only update when values actually change (avoids unnecessary work)
+      if (sceneRef.current && (rotate !== lastRotate || zoom !== lastZoom)) {
+        sceneRef.current.setExternalTransform?.(rotate, zoom)
+        lastRotate = rotate
+        lastZoom = zoom
+      }
+
+      raf = requestAnimationFrame(tick)
+    }
+
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [])
+
   useEffect(() => {
     const onVisibility = () => setHidden(document.hidden)
     document.addEventListener('visibilitychange', onVisibility)

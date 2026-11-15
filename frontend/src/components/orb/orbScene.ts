@@ -19,6 +19,7 @@ export interface OrbSceneApi {
   setPalette(palette: OrbPalette): void
   setPaused(paused: boolean): void
   setFps(fps: number): void
+  setExternalTransform(rotationDeg: number, zoom: number): void
   dispose(): void
 }
 
@@ -752,5 +753,26 @@ export function createOrbScene(container: HTMLElement, options: OrbSceneOptions)
     renderer.domElement.remove()
   }
 
-  return { setState, setLevel, setPalette: applyPalette, setPaused, setFps, dispose }
+   // ────────────────────────────────────────────────
+  // NEW: External transform from Hand Gesture Intelligence
+  // ────────────────────────────────────────────────
+  function setExternalTransform(rotationDeg: number, zoom: number) {
+    // Spin the whole orb group
+    orbGroup.rotation.y = THREE.MathUtils.degToRad(rotationDeg)
+
+    // Zoom by moving the camera (keeps the feel of OrbitControls)
+    const targetDistance = THREE.MathUtils.clamp(5.9 / Math.max(0.4, zoom), 3.2, 8.5)
+    camera.position.z = targetDistance
+    camera.lookAt(0, 0.24, 0)
+  }
+
+  return {
+    setState,
+    setLevel,
+    setPalette: applyPalette,
+    setPaused,
+    setFps,
+    setExternalTransform,   // ← added
+    dispose,
+  }
 }
