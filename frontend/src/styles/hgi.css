@@ -2015,3 +2015,18 @@
   mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
   opacity: calc(min(var(--dwell), 1) * 1);
 }
+/* Hover-to-click progress ring (value set by cursor assist) */
+.hgi-cursor__ring {
+  --dwell: var(--hgi-dwell, 0);
+}
+
+.hgi-cursor__ring::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: conic-gradient(var(--accent-strong) calc(var(--dwell) * 360deg), transparent 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+  opacity: calc(min(var(--dwell), 1) * 1);
+}

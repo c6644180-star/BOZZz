@@ -1422,6 +1422,23 @@ export function HgiProvider({ children }: { children: ReactNode }) {
     window.addEventListener('bozz-emergency-stop', onEmergency)
     return () => window.removeEventListener('bozz-emergency-stop', onEmergency)
   }, [emergencyStop])
+  
+  // Voice and typed commands ("start gestures", "switch to cursor mode"). Desktop mode is
+  // deliberately NOT accepted here: real mouse control is only switched on by hand.
+  useEffect(() => {
+    const onCommand = (event: Event) => {
+      const detail = (event as CustomEvent<{ action?: string; mode?: string }>).detail
+      if (detail?.action === 'start') {
+        if (!enabledRef.current) void toggleEnabled()
+      } else if (detail?.action === 'stop') {
+        if (enabledRef.current) void toggleEnabled()
+      } else if (detail?.action === 'mode' && (detail.mode === 'orb' || detail.mode === 'cursor')) {
+        setMode(detail.mode)
+      }
+    }
+    window.addEventListener('bozz:gesture-command', onCommand)
+    return () => window.removeEventListener('bozz:gesture-command', onCommand)
+  }, [setMode, toggleEnabled])
 
   // Voice and typed commands ("start gestures", "switch to cursor mode"). Desktop mode is
   // deliberately NOT accepted here: real mouse control is only switched on by hand.
