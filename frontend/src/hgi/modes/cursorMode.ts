@@ -1,9 +1,11 @@
 import { gestureBus } from '../bus/GestureBus'
 import { mapCameraToViewport } from '../geometry'
+import { DwellTracker, loadCursorAssist, snapPoint, type Box } from '../cursorAssist'
 import type { HgiBindings } from '../types'
 
 const OVERLAY = '.hgi-hud, .hgi-cursor, .hgi-desktop-banner, .hgi-desktop-overlay'
 const DANGER = '[data-gesture-guard], .delete-btn, .command-bar__send, button[type="submit"]'
+const INTERACTIVE = 'button, a[href], [role="button"], [role="switch"], input:not([type="hidden"]), select, textarea, summary'
 const DANGER_WORDS = /(delete|remove|send|publish|submit|erase|destroy|confirm|stop|emergency|approve|execute|reject)/i
 
 function targetAt(x: number, y: number): HTMLElement | null {
@@ -75,6 +77,14 @@ export class CursorMode {
   private lastDragMove = 0
   private lastClickAt = 0
   private lastGenericClickAt = 0
+  // Where actions land. This is the raw smoothed cursor, optionally pulled toward a nearby control.
+  private aim = { x: window.innerWidth / 2, y: window.innerHeight / 2 }
+  private targets: Array<{ box: Box; element: HTMLElement }> = []
+  private targetsAt = 0
+  private readonly dwell = new DwellTracker(loadCursorAssist().dwellMs)
+  private readonly dwellKeys = new WeakMap<HTMLElement, string>()
+  private nextDwellKey = 1
+  private lastDwellNoticeAt = 0
 
   constructor(bindings: HgiBindings, callbacks: CursorCallbacks) {
     this.bindings = bindings
@@ -84,6 +94,9 @@ export class CursorMode {
   start(): void {
     this.stop()
     this.hasCursor = false
+    this.targets = []
+    this.targetsAt = 0
+    this.dwell.reset()
     this.unsubscribes.push(
       gestureBus.on('gesture.move', (payload) => {
         const next = mapCameraToViewport(payload.x, payload.y, window.innerWidth, window.innerHeight, true, 0.03)
@@ -94,26 +107,28 @@ export class CursorMode {
           this.cursor.x += (next.x - this.cursor.x) * 0.4
           this.cursor.y += (next.y - this.cursor.y) * 0.4
         }
-        this.callbacks.onCursor(this.cursor.x, this.cursor.y)
+        this.updateAim()
+        this.callbacks.onCursor(this.aim.x, this.aim.y)
         if (this.dragging && performance.now() - this.lastDragMove > 40) {
           this.lastDragMove = performance.now()
-          mouse(this.dragging, 'mousemove', this.cursor.x, this.cursor.y)
+          mouse(this.dragging, 'mousemove', this.aim.x, this.aim.y)
         }
+        this.runDwell()
       }),
       gestureBus.on('gesture.pinch_start', (payload) => {
         this.pinchStartedAt = payload.timestamp
       }),
       gestureBus.on('gesture.pinch_hold', () => {
         if (this.bindings.cursorClick !== 'pinch' || this.dragging) return
-        const element = targetAt(this.cursor.x, this.cursor.y)
+        const element = targetAt(this.aim.x, this.aim.y)
         if (!element || isDangerous(element)) return
         this.dragging = element
         this.lastDragMove = performance.now()
-        mouse(element, 'mousedown', this.cursor.x, this.cursor.y)
+        mouse(element, 'mousedown', this.aim.x, this.aim.y)
       }),
       gestureBus.on('gesture.pinch_end', (payload) => {
         if (this.dragging) {
-          mouse(this.dragging, 'mouseup', this.cursor.x, this.cursor.y, 0)
+          mouse(this.dragging, 'mouseup', this.aim.x, this.aim.y, 0)
           this.dragging = null
           return
         }
@@ -121,19 +136,19 @@ export class CursorMode {
         if (!payload.clickAllowed || payload.timestamp - this.pinchStartedAt < 60) return
         if (payload.timestamp - this.lastClickAt < 250) return
         this.lastClickAt = payload.timestamp
-        const result = gestureClickAt(this.cursor.x, this.cursor.y)
+        const result = gestureClickAt(this.aim.x, this.aim.y)
         if (result === 'blocked') this.callbacks.onNotice('Gesture click blocked until you confirm the dialog.')
       }),
       gestureBus.on('gesture.scroll', (payload) => {
         if (payload.gesture !== this.bindings.cursorScroll) return
-        scrollAtPoint(this.cursor.x, this.cursor.y, payload.delta)
+        scrollAtPoint(this.aim.x, this.aim.y, payload.delta)
       }),
       gestureBus.on('gesture.recognized', (payload) => {
         if (this.bindings.cursorClick === 'pinch') return
         if (payload.name !== this.bindings.cursorClick) return
         if (performance.now() - this.lastGenericClickAt < 800) return
         this.lastGenericClickAt = performance.now()
-        const result = gestureClickAt(this.cursor.x, this.cursor.y)
+        const result = gestureClickAt(this.aim.x, this.aim.y)
         if (result === 'blocked') this.callbacks.onNotice('Gesture click blocked until you confirm the dialog.')
       }),
     )
@@ -144,14 +159,86 @@ export class CursorMode {
   }
 
   get position(): { x: number; y: number } {
-    return { ...this.cursor }
+    return { ...this.aim }
+  }
+
+  /** Cache on-screen interactive controls (refreshed a few times a second, not per frame). */
+  private refreshTargets(): void {
+    const now = performance.now()
+    if (now - this.targetsAt < 300) return
+    this.targetsAt = now
+    const found: Array<{ box: Box; element: HTMLElement }> = []
+    const elements = document.querySelectorAll<HTMLElement>(INTERACTIVE)
+    for (let index = 0; index < elements.length && found.length < 250; index += 1) {
+      const element = elements[index]
+      if (element.closest(OVERLAY) || (element as HTMLButtonElement).disabled) continue
+      if (element.getAttribute('aria-hidden') === 'true') continue
+      const rect = element.getBoundingClientRect()
+      if (rect.width < 8 || rect.height < 8) continue
+      if (rect.right < 0 || rect.bottom < 0 || rect.left > window.innerWidth || rect.top > window.innerHeight) continue
+      if (typeof element.checkVisibility === 'function' && !element.checkVisibility()) continue
+      found.push({ box: { left: rect.left, top: rect.top, width: rect.width, height: rect.height }, element })
+    }
+    this.targets = found
+  }
+
+  private updateAim(): void {
+    const assist = loadCursorAssist()
+    if (!assist.snap) {
+      this.aim = { x: this.cursor.x, y: this.cursor.y }
+      return
+    }
+    this.refreshTargets()
+    const snapped = snapPoint(
+      this.cursor.x,
+      this.cursor.y,
+      this.targets.map((target) => target.box),
+      assist.snapRadius,
+    )
+    this.aim = { x: snapped.x, y: snapped.y }
+  }
+
+  /** Optional hover-to-click. Never clicks risky controls; those still need a pinch and a confirm. */
+  private runDwell(): void {
+    const assist = loadCursorAssist()
+    const root = document.documentElement.style
+    if (!assist.dwell || this.dragging) {
+      root.setProperty('--hgi-dwell', '0')
+      this.dwell.reset()
+      return
+    }
+    this.dwell.setDwellMs(assist.dwellMs)
+    this.refreshTargets()
+    const hit = targetAt(this.aim.x, this.aim.y)
+    const element = hit && this.targets.some((target) => target.element === hit) ? hit : null
+    let key: string | null = null
+    if (element) {
+      key = this.dwellKeys.get(element) ?? null
+      if (!key) {
+        key = `t${this.nextDwellKey++}`
+        this.dwellKeys.set(element, key)
+      }
+    }
+    const state = this.dwell.update(this.aim.x, this.aim.y, key, performance.now())
+    root.setProperty('--hgi-dwell', String(state.progress))
+    if (!state.fire || !element) return
+    if (isDangerous(element)) {
+      const now = performance.now()
+      if (now - this.lastDwellNoticeAt > 4000) {
+        this.lastDwellNoticeAt = now
+        this.callbacks.onNotice('Hover-click skips risky controls. Pinch to confirm those.')
+      }
+      return
+    }
+    element.click()
   }
 
   stop(): void {
+    document.documentElement.style.setProperty('--hgi-dwell', '0')
     for (const unsubscribe of this.unsubscribes) unsubscribe()
     this.unsubscribes = []
     if (this.dragging) {
-      mouse(this.dragging, 'mouseup', this.cursor.x, this.cursor.y, 0)
+      mouse(this.dragging, 'mouseup', this.aim.x, this.aim.y, 0)
       this.dragging = null
     }
   }

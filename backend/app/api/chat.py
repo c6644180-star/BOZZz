@@ -22,6 +22,9 @@ class ConversationTurn(BaseModel):
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=12_000)
     history: list[ConversationTurn] = Field(default_factory=list, max_length=12)
+    # Memory reaches the model only when the user granted Memory data AND turned on
+    # "Use memory in chat". Sending True here never overrides either switch.
+    use_memory: bool = True
 
 
 class ChatResponse(BaseModel):
@@ -29,6 +32,19 @@ class ChatResponse(BaseModel):
     provider: str
     model: str
     local: bool = True
+
+
+def _memory_context() -> dict[str, str] | None:
+    """Fenced memory notes, or None when the permission or the setting is off."""
+    try:
+        from app.api.memory import get_memory_service
+        from app.api.modules import get_permissions
+
+        if not get_permissions().is_granted("memory", "memory_data"):
+            return None
+        return get_memory_service().context_message()
+    except Exception:  # memory must never break chat
+        return None
 
 
 @router.get("/ai/status")
@@ -40,6 +56,10 @@ def ai_status():
 def chat(payload: ChatRequest):
     provider = get_registry().default()
     history = [turn.model_dump() for turn in payload.history]
+    if payload.use_memory:
+        memory_message = _memory_context()
+        if memory_message:
+            history = [memory_message, *history[-11:]]
     try:
         reply = provider.chat(payload.message.strip(), history)
     except LocalProviderError as exc:

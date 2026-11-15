@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { BrowserRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { TopBar } from './components/layout/TopBar'
 import { SlideOver } from './components/layout/SlideOver'
@@ -7,7 +7,11 @@ import { SettingsPanel } from './components/layout/SettingsPanel'
 import { HistoryPanel } from './components/history/HistoryPanel'
 import { ChatPanel } from './components/chat/ChatPanel'
 import { DesktopControlSlideOver } from './components/hgi/DesktopControlSlideOver'
+import { AgentProvider } from './agent/AgentProvider'
+import { AgentBanner } from './agent/AgentBanner'
+import { AgentPanel } from './agent/AgentPanel'
 import { BozzVoiceProvider } from './components/BozzVoiceProvider'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { HgiProvider } from './components/hgi/HgiProvider'
 import { HgiRuntime } from './components/hgi/HgiRuntime'
 import { HudFrame } from './components/hud/HudFrame'
@@ -96,6 +100,11 @@ function RouteView({ status }: { status: ConnStatus }) {
   )
 }
 
+function RouteErrorBoundary({ children }: { children: ReactNode }) {
+  const location = useLocation()
+  return <ErrorBoundary resetKey={location.pathname}>{children}</ErrorBoundary>
+}
+
 function Shell() {
   const [panel, setPanel] = useState<Panel>(null)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
@@ -167,6 +176,7 @@ function Shell() {
     const openMenu = () => replacePanel('menu')
     const openSettings = () => replacePanel('settings')
     const openDesktop = () => replacePanel('desktop')
+    const openAgent = () => replacePanel('agent')
     const openChat = () => {
       setChatReadCount(messages.length)
       setPanel('chat')
@@ -180,6 +190,7 @@ function Shell() {
     window.addEventListener('bozz:open-menu', openMenu)
     window.addEventListener('bozz:open-settings', openSettings)
     window.addEventListener('bozz:open-desktop', openDesktop)
+    window.addEventListener('bozz:open-agent', openAgent)
     window.addEventListener('bozz:open-chat', openChat)
     window.addEventListener('bozz:toggle-chat', toggleChat)
     window.addEventListener('bozz:show-shortcuts', openShortcuts)
@@ -189,6 +200,7 @@ function Shell() {
       window.removeEventListener('bozz:open-menu', openMenu)
       window.removeEventListener('bozz:open-settings', openSettings)
       window.removeEventListener('bozz:open-desktop', openDesktop)
+      window.removeEventListener('bozz:open-agent', openAgent)
       window.removeEventListener('bozz:open-chat', openChat)
       window.removeEventListener('bozz:toggle-chat', toggleChat)
       window.removeEventListener('bozz:show-shortcuts', openShortcuts)
@@ -216,11 +228,14 @@ function Shell() {
         onSettings={() => togglePanelTo('settings')}
         onChat={() => togglePanelTo('chat')}
         onMini={() => window.bozzDesktop?.setMode('mini')}
-        onMinimize={() => window.bozzDesktop?.setMode('mini')}
       />
 
+      <AgentBanner />
+
       <main className="app-main">
-        <RouteView status={status} />
+        <RouteErrorBoundary>
+          <RouteView status={status} />
+        </RouteErrorBoundary>
       </main>
 
       <SlideOver open={panel === 'history'} side="left" id="history-panel" title="History" onClose={closePanel}>
@@ -234,6 +249,9 @@ function Shell() {
       </SlideOver>
       <SlideOver open={panel === 'desktop'} side="right" id="desktop-control-panel" title="Desktop Control" onClose={closePanel}>
         <DesktopControlSlideOver />
+      </SlideOver>
+      <SlideOver open={panel === 'agent'} side="right" id="agent-panel" title="Computer agent" onClose={closePanel}>
+        <AgentPanel />
       </SlideOver>
       <SlideOver
         open={panel === 'chat'}
@@ -266,7 +284,9 @@ function RootRoutes() {
   return (
     <BozzVoiceProvider>
       <HgiProvider>
-        <Shell />
+        <AgentProvider>
+          <Shell />
+        </AgentProvider>
       </HgiProvider>
     </BozzVoiceProvider>
   )

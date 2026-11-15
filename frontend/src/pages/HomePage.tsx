@@ -8,7 +8,6 @@ import { HudNav } from '../components/hud/HudNav'
 import { Orb } from '../components/orb/Orb'
 import { OrbVoiceStatus } from '../components/orb/OrbVoiceStatus'
 import { VoiceWave } from '../components/orb/VoiceWave'
-import { GestureToggle } from '../components/orb/GestureToggle'
 import { SHORTCUT_DELAY_MS, SHORTCUT_LETTERS, shouldOpenComposerOnKey } from '../home/composer'
 import type { ShellPanel } from '../home/panels'
 import { useBozzVoice } from '../hooks/useBozzVoice'
@@ -158,7 +157,6 @@ export default function HomePage({ status }: { status: ConnStatus }) {
           />
           <p className="voice-note" role="status">{voiceNote}</p>
         </div>
-        <GestureToggle />
       </div>
 
       {settings.showWidgets && <DataWidgets />}

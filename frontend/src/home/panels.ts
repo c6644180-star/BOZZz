@@ -1,4 +1,4 @@
-export type ShellPanel = 'history' | 'menu' | 'settings' | 'desktop' | 'chat' | null
+export type ShellPanel = 'history' | 'menu' | 'settings' | 'desktop' | 'agent' | 'chat' | null
 
 export type OpenablePanel = Exclude<ShellPanel, null>
 

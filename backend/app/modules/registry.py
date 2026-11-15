@@ -21,6 +21,7 @@ PERMISSION_IDS = (
     "device_control",
     "messaging",
     "network",
+    "memory_data",
 )
 
 
@@ -92,6 +93,13 @@ PERMISSIONS: tuple[PermissionDefinition, ...] = (
         description="Create or send messages on your behalf. Nothing is sent in this build.",
         scope="Future BCI/BCCI integrations",
         risk="high",
+    ),
+    PermissionDefinition(
+        id="memory_data",
+        label="Memory data",
+        description="Keep short notes you explicitly ask BOZZ to remember in the local database. Secrets are refused.",
+        scope="Local SQLite memory items, never uploaded",
+        risk="medium",
     ),
     PermissionDefinition(
         id="network",
@@ -260,13 +268,22 @@ MODULES: tuple[ModuleDefinition, ...] = (
     ModuleDefinition(
         id="memory",
         name="Memory",
-        version="1.0.0",
+        version="2.0.0",
         status="Ready",
-        permissions=(),
-        capabilities=("Local notes stored in browser localStorage", "No server or cloud sync"),
-        description="Browser-local notes and recall surface.",
+        permissions=("memory_data",),
+        capabilities=(
+            "User-approved notes stored in the local database",
+            "Search, edit, export and delete every item",
+            "Optional use as chat context (off by default)",
+            "Secrets such as passwords, keys and card numbers are refused",
+            "Older browser-only notes can be moved into BOZZ memory",
+        ),
+        description="Long-term memory you control. BOZZ never stores anything you did not ask it to remember.",
         route="/memory",
-        status_detail="Notes are stored only in this browser profile.",
+        status_detail=(
+            "Memory data is off by default. When on, only items you add are kept, and they reach the model "
+            "only if you enable 'Use memory in chat'."
+        ),
     ),
 )
 

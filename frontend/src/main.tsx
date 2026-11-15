@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { loadSettings } from './services/localStore'
 
 const bootSettings = loadSettings()
@@ -12,6 +13,8 @@ document.documentElement.dataset.effects = bootSettings.backgroundEffects ? 'on'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary scope="app">
+      <App />
+    </ErrorBoundary>
   </StrictMode>,
 )

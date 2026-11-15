@@ -43,9 +43,7 @@
     { "id": "screenshot.capture", "tier": 1, "label": "Save a screenshot to Pictures", "risk": "low", "verify": "file", "params": {} },
     { "id": "dictation.stop", "tier": 1, "label": "Stop dictation", "risk": "low", "verify": "state", "params": {} },
     { "id": "control.emergency_stop", "tier": 1, "label": "Emergency stop", "risk": "low", "verify": "state", "params": {} },
-    { "id": "wake.word", "tier": 1, "label": "Wake BOZZ AI", "risk": "low", "verify": "state", "params": {} },
 
-    { "id": "app.launch.bozz", "tier": 2, "label": "Launch BOZZ", "risk": "medium", "verify": "process", "params": { "name": { "type": "string", "maxLength": 120, "required": false } } },
 
     { "id": "app.launch", "tier": 2, "label": "Launch an allowlisted app", "risk": "medium", "verify": "process", "params": { "name": { "type": "string", "maxLength": 120, "required": false }, "path": { "type": "string", "maxLength": 1024, "required": false } } },
     { "id": "url.open", "tier": 2, "label": "Open a website", "risk": "medium", "verify": "none", "params": { "url": { "type": "string", "maxLength": 2048 } } },

@@ -144,23 +144,6 @@ def parse_command(
     if not phrase:
         return ParsedCommand(handled=False, kind="unknown")
 
-    # --- single-word wake trigger ---
-    # If the user says just "bozz" (or "bozz" as the only word), treat it as
-    # a wake-up trigger rather than a desktop action. This lets the AI start
-    # listening/listening mode even when the app is minimized or idle.
-    wake_words = ("bozz",)
-    if phrase in wake_words:
-        return ParsedCommand(
-            handled=True,
-            kind="action",
-            action_id="wake.word",
-            params={},
-            label="Wake BOZZ AI",
-            tier=1,
-            message="Understood: wake word detected.",
-            explanation="Matched wake word 'BOZZ' (Tier 1).",
-        )
-
     for pattern, action_id, label in _TIER3_PATTERNS:
         if pattern.search(phrase):
             return _blocked(action_id, label)

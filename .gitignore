@@ -35,3 +35,7 @@ temp/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Windows startup/auto-launch files must never be committed
+%APPDATA%/
+*.lnk

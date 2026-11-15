@@ -23,7 +23,6 @@ export function TopBar({
   onSettings,
   onChat,
   onMini,
-  onMinimize,
 }: {
   status: ConnStatus
   orbState: OrbState
@@ -40,7 +39,6 @@ export function TopBar({
   onSettings: () => void
   onChat: () => void
   onMini: () => void
-  onMinimize: () => void
 }) {
   const summary = `Backend: ${STATUS_LABEL[status]}. Voice output: ${voiceOutput}. Voice input: ${voiceInput}. Orb: ${orbState}.`
 
@@ -99,17 +97,6 @@ export function TopBar({
             onClick={onMini}
             aria-label="Switch to mini orb mode"
             title="Mini orb (Ctrl+Alt+M)"
-          >
-            <Minimize2 />
-          </button>
-        )}
-        {miniAvailable && (
-          <button
-            type="button"
-            className="icon-button"
-            onClick={onMinimize}
-            aria-label="Minimize BOZZ window"
-            title="Minimize window"
           >
             <Minimize2 />
           </button>

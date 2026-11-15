@@ -1,8 +1,10 @@
+import { useSyncExternalStore } from 'react'
 import { RotateCcw, SlidersHorizontal } from 'lucide-react'
 import { useHgi } from './hgiContext'
 import { BUILTIN_GESTURES, DEFAULT_HGI_SETTINGS } from '../../hgi/types'
 import type { GestureName, HgiBindings, HgiQuality } from '../../hgi/types'
 import { gestureLabel } from '../../hgi/classification/builtinGestures'
+import { loadCursorAssist, saveCursorAssist, subscribeCursorAssist } from '../../hgi/cursorAssist'
 
 const BINDING_COPY: Array<{ key: keyof HgiBindings; label: string; note: string }> = [
   { key: 'orbSpin', label: 'Orb spin', note: 'Pinch uses direct drag; other gestures use repeated recognition.' },
@@ -25,6 +27,8 @@ const QUALITY_COPY: Record<HgiQuality, string> = {
 
 export function GestureSettings() {
   const { settings, updateSettings, customGestures, micAvailable, micDetail, micOptIn, setMicOptIn } = useHgi()
+
+  const assist = useSyncExternalStore(subscribeCursorAssist, loadCursorAssist, loadCursorAssist)
 
   const gestures: GestureName[] = [
     ...BUILTIN_GESTURES,
@@ -104,6 +108,44 @@ export function GestureSettings() {
               updateSettings({ micConfirmClap: event.target.checked })
               void setMicOptIn(event.target.checked)
             }}
+          />
+        </label>
+      </div>
+
+      <div className="hgi-card__head hgi-card__head--sub">
+        <h4>Cursor assist</h4>
+      </div>
+      <div className="hgi-settings-grid">
+        <label className="toggle-row hgi-toggle">
+          <span>
+            Snap to buttons
+            <small>Gently pulls the cursor toward the nearest button or link so hand shake does not miss it.</small>
+          </span>
+          <input type="checkbox" checked={assist.snap} onChange={(event) => saveCursorAssist({ snap: event.target.checked })} />
+        </label>
+        <label className="hgi-field">
+          <span>Snap strength zone <small>{assist.snapRadius}px — how close to a control before it pulls in</small></span>
+          <input
+            type="range" min={10} max={120} step={2}
+            value={assist.snapRadius}
+            disabled={!assist.snap}
+            onChange={(event) => saveCursorAssist({ snapRadius: Number(event.target.value) })}
+          />
+        </label>
+        <label className="toggle-row hgi-toggle">
+          <span>
+            Hover to click
+            <small>Hold the cursor still on a control to click it, no pinch needed. It never clicks delete, send, approve or similar controls.</small>
+          </span>
+          <input type="checkbox" checked={assist.dwell} onChange={(event) => saveCursorAssist({ dwell: event.target.checked })} />
+        </label>
+        <label className="hgi-field">
+          <span>Hover time <small>{(assist.dwellMs / 1000).toFixed(1)} s — longer means fewer accidental clicks</small></span>
+          <input
+            type="range" min={600} max={3000} step={100}
+            value={assist.dwellMs}
+            disabled={!assist.dwell}
+            onChange={(event) => saveCursorAssist({ dwellMs: Number(event.target.value) })}
           />
         </label>
       </div>

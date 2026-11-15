@@ -29,6 +29,7 @@ import { runModelCommand } from '../l3dme/modelControl'
 import { getHoloControl, parseHoloCommand, runHoloCommand } from '../holo/commands'
 import { runSpatialCommand } from '../spatial/commands'
 import { runBciCommand } from '../messages/commands'
+import { runAppCommand } from '../commands/appCommands'
 import {
   fetchDesktopAllowlist,
   fetchDesktopApprovals,
@@ -614,6 +615,13 @@ export function BozzVoiceProvider({ children }: { children: ReactNode }) {
     const spatialOutcome = await runSpatialCommand(command)
     if (spatialOutcome) {
       say(spatialOutcome.reply, true)
+      return
+    }
+
+    // Open any screen, control gestures, hand a task to the computer agent, manage memory.
+    const appOutcome = await runAppCommand(command)
+    if (appOutcome) {
+      say(appOutcome.reply, true)
       return
     }
 

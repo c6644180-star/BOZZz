@@ -1,42 +1,18 @@
-@title BOZZ Desktop AI
 @echo off
-color 0A
+title BOZZ launcher
+rem Starts the BOZZ backend and the BOZZ frontend from wherever this folder lives.
+rem Nothing here runs automatically at Windows login. Double-click it when you want BOZZ.
+set "ROOT=%~dp0"
 
-echo ============================================
-echo  BOZZ Desktop AI - Starting Up
-echo ============================================
+echo Starting BOZZ backend on http://127.0.0.1:8000 ...
+start "BOZZ backend" cmd /k "cd /d "%ROOT%backend" && .venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000"
 
-:: ============================================
-:: Start Backend (AI Brain)
-:: ============================================
-echo.
-echo [1/2] Opening Backend Terminal...
-start "BOZZ_Backend" cmd /k cd /d "C:\Users\Marimuthu S\Documents\GitHub\BOZZz\backend" & .venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+timeout /t 4 /nobreak >nul
 
-:: Wait a moment
-timeout /t 5 /nobreak >nul
-
-:: ============================================
-:: Start Frontend (Desktop Interface)
-:: ============================================
-echo.
-echo [2/2] Opening Frontend Terminal...
-start "BOZZ_Frontend" cmd /k cd /d "C:\Users\Marimuthu S\Documents\GitHub\BOZZz\frontend" & npm run dev
+echo Starting BOZZ frontend on http://localhost:5173 ...
+start "BOZZ frontend" cmd /k "cd /d "%ROOT%frontend" && npm run dev"
 
 echo.
-echo ============================================
-echo  BOZZ is now running!
-echo ============================================
-echo.
-echo  Backend AI:  http://127.0.0.1:8000
-echo  Frontend:    http://localhost:5173 (opens in browser)
-echo.
-echo "  WAKE WORD: Say 'BOZZ' to wake the AI"
-echo "  MINIMIZE: Click TopBar Minimize2 button"
-echo "  MINI ORB: Press Ctrl+Alt+M to toggle"
-echo.
-echo  Two terminal windows just opened above.
-echo.
-echo  Keep these windows open - BOZZ runs in the background.
-echo.
+echo Two windows opened. Close them to stop BOZZ.
+echo For the desktop app with the mini orb, run "npm run electron" inside the frontend folder instead.
 pause

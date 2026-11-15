@@ -3,6 +3,7 @@ export type ModuleStatus = 'Not connected' | 'Simulation' | 'Ready' | 'Error'
 export type PermissionId =
   | 'file_access'
   | 'message_data'
+  | 'memory_data'
   | 'camera'
   | 'microphone'
   | 'device_control'

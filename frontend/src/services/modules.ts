@@ -28,6 +28,13 @@ const PERMISSION_CATALOG: PermissionCatalogItem[] = [
     risk: 'high',
   },
   {
+    id: 'memory_data',
+    label: 'Memory data',
+    description: 'Keep short notes you explicitly ask BOZZ to remember in the local database. Secrets are refused.',
+    scope: 'Local SQLite memory items, never uploaded',
+    risk: 'medium',
+  },
+  {
     id: 'camera',
     label: 'Camera',
     description: 'Use the camera for local gesture landmarks. Frames are never recorded or uploaded.',
@@ -69,7 +76,7 @@ const catalog = new Map(PERMISSION_CATALOG.map((item) => [item.id, item]))
 function permission(id: PermissionId, granted = false): ModulePermission {
   const item = catalog.get(id)
   if (!item) throw new Error(`Unknown permission ${id}`)
-  return { ...item, granted, enforced: id === 'file_access' || id === 'message_data' }
+  return { ...item, granted, enforced: id === 'file_access' || id === 'message_data' || id === 'memory_data' }
 }
 
 function moduleInfo(
@@ -222,13 +229,13 @@ export const FRONTEND_MODULES: ModuleInfo[] = [
   moduleInfo({
     id: 'memory',
     name: 'Memory',
-    version: '1.0.0',
+    version: '2.0.0',
     status: 'Ready',
-    description: 'Browser-local notes and recall surface.',
-    statusDetail: 'Notes are stored only in this browser profile.',
+    description: 'Long-term memory you control. BOZZ never stores anything you did not ask it to remember.',
+    statusDetail: 'Backend offline: only browser-local notes are available until the BOZZ backend is running.',
     route: '/memory',
-    capabilities: ['Local notes stored in browser localStorage', 'No server or cloud sync'],
-    permissions: [],
+    capabilities: ['User-approved notes in the local database', 'Search, edit, export and delete every item', 'Optional chat context (off by default)'],
+    permissions: ['memory_data'],
   }),
 ]
 

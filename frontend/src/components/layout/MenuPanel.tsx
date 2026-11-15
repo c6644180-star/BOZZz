@@ -1,4 +1,4 @@
-import { Keyboard, MonitorCog, OctagonAlert, Pause, ShieldCheck } from 'lucide-react'
+import { Bot, Keyboard, MonitorCog, OctagonAlert, Pause, ShieldCheck } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 import { navItems } from '../../config/nav'
 import { useBozzVoice } from '../../hooks/useBozzVoice'
@@ -66,6 +66,17 @@ export function MenuPanel({ onClose }: { onClose: () => void }) {
           >
             <MonitorCog />
             Desktop Control
+          </button>
+          <button
+            type="button"
+            className="secondary-action"
+            onClick={() => {
+              onClose()
+              window.dispatchEvent(new Event('bozz:open-agent'))
+            }}
+          >
+            <Bot />
+            Computer agent
           </button>
           <button
             type="button"

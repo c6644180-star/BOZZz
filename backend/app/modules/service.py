@@ -18,6 +18,7 @@ _ENFORCED: frozenset[tuple[str, str]] = frozenset(
         ("spatial-desktop", "file_access"),
         ("holo-projects", "file_access"),
         ("bci", "message_data"),
+        ("memory", "memory_data"),
         ("hgi", "device_control"),
     }
 )

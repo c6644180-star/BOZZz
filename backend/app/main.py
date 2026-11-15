@@ -17,6 +17,7 @@ from app.api.desktop import get_desktop
 from app.api.desktop import router as desktop_router
 from app.api.files import router as files_router
 from app.api.intents import get_engine, router as intents_router
+from app.api.memory import router as memory_router
 from app.api.modules import get_module_service, router as modules_router
 from app.api.tts import get_tts
 from app.api.tts import router as tts_router
@@ -76,6 +77,7 @@ app.include_router(intents_router)
 app.include_router(modules_router)
 app.include_router(files_router)
 app.include_router(bci_router)
+app.include_router(memory_router)
 app.include_router(tts_router)
 app.include_router(desktop_router)
 app.include_router(agent_router)
