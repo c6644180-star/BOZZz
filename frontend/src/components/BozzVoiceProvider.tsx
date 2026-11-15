@@ -612,19 +612,14 @@ export function BozzVoiceProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    // Open any screen, control gestures, hand a task to the computer agent, manage memory.
-    const appOutcome = await runAppCommand(command)
-    if (appOutcome) {
-      say(appOutcome.reply, true)
-      return
-    }
+    
     const spatialOutcome = await runSpatialCommand(command)
     if (spatialOutcome) {
       say(spatialOutcome.reply, true)
       return
     }
 
-    // Open any screen, control gestures, hand a task to the computer agent, manage memory.
+     // Open any screen, control gestures, hand a task to the computer agent, manage memory.
     const appOutcome = await runAppCommand(command)
     if (appOutcome) {
       say(appOutcome.reply, true)
