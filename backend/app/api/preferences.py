@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
@@ -10,6 +12,13 @@ from app.preferences.service import PreferenceService, _iso_now
 from app.db.store import IntentStore
 from app.modules import PermissionDenied
 from fastapi import Path as FastAPIPath
+
+
+def get_owner_id() -> str:
+    """Derive the local user owner ID from the database path settings."""
+    settings = get_settings()
+    return settings.database_path.stem or "local_user"
+
 
 router = APIRouter(tags=["preference-management"])
 
@@ -63,6 +72,11 @@ class PreferenceProfileResponse(BaseModel):
     schema_version: int
 
 
+class PreferenceListResponse(BaseModel):
+    identities: list[PreferenceProfileResponse]
+    count: int
+
+
 class ProposePreferenceChangeRequest(BaseModel):
     changes: dict[str, Any] = Field(...)
 
@@ -90,7 +104,7 @@ def create_preference_profile(payload: CreatePreferenceProfileRequest) -> dict[s
     try:
         service = _get_service()
         record = service.create_preference_profile(
-            owner_id=settings.database_path.stem or "local_user",
+            owner_id=get_owner_id(),
             identity_id=payload.identity_id,
             name=payload.name,
             visual_preferences=payload.visual_preferences,
@@ -128,7 +142,7 @@ def create_preference_profile(payload: CreatePreferenceProfileRequest) -> dict[s
         raise HTTPException(status_code=500, detail="An unexpected local error occurred.") from exc
 
 
-@router.get("/preference-profiles", response_model=list[PreferenceProfileResponse])
+@router.get("/preference-profiles", response_model=PreferenceListResponse)
 def list_preference_profiles(
     identity_id: str | None = Query(default=None, min_length=1),
     owner_id: str | None = Query(default=None, min_length=1),
@@ -232,7 +246,7 @@ def propose_preference_change(
         proposal = service.propose_preference_change(
             profile_id=profile_id,
             changes=payload.changes,
-            caller_owner_id=settings.database_path.stem or "local_user",
+            caller_owner_id=get_owner_id(),
         )
         return {
             "profile_id": proposal["profile_id"],
@@ -286,7 +300,7 @@ def reset_preference_profile(profile_id: str) -> dict[str, Any]:
     """
     try:
         service = _get_service()
-        updated = service.reset_preference_profile(profile_id, caller_owner_id=settings.database_path.stem or "local_user")
+        updated = service.reset_preference_profile(profile_id, caller_owner_id=get_owner_id())
         return {
             "id": updated["id"],
             "name": updated["name"],

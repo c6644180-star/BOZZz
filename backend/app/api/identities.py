@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
@@ -10,7 +12,19 @@ from app.identities.service import IdentityService, _iso_now
 from app.modules import PermissionDenied
 from app.permissions.policy import assess
 
-router = APIRouter(tags=["identity-management"])
+
+def _parse_config(value: str) -> dict:
+    """Parse a JSON config string, returning empty dict on failure."""
+    try:
+        return json.loads(value) if value else {}
+    except (json.JSONDecodeError, TypeError):
+        return {}
+
+
+def get_owner_id() -> str:
+    """Derive the local user owner ID from the database path settings."""
+    settings = get_settings()
+    return settings.database_path.stem or "local_user"
 
 
 def _get_service() -> IdentityService:
@@ -80,7 +94,7 @@ def create_identity(payload: CreateIdentityRequest) -> dict[str, Any]:
     try:
         service = _get_service()
         # Use a simple owner identifier for local single-user design
-        owner_id = settings.database_path.stem or "local_user"
+        owner_id = get_owner_id()
         record = service.create_identity(
             owner_id=owner_id,
             name=payload.name,

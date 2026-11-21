@@ -9,9 +9,15 @@ from app.db.database import Database
 from app.bids.service import BidService, _generate_bid, _iso_now
 from app.db.store import IntentStore
 from fastapi import Path as FastAPIPath
-import json
 
 router = APIRouter(tags=["bid-management"])
+
+
+def get_owner_id() -> str:
+    """Derive the local user owner ID from the database path settings."""
+    from app.core.config import get_settings
+    settings = get_settings()
+    return settings.database_path.stem or "local_user"
 
 
 def _get_service() -> BidService:
@@ -54,6 +60,11 @@ class BidResponse(BaseModel):
     original_description: str
 
 
+class BidListResponse(BaseModel):
+    bids: list[BidResponse]
+    count: int
+
+
 class EditBidRequest(BaseModel):
     ai_interpretation: str | None = Field(default=None, max_length=5000)
     intended_outcome: str | None = Field(default=None, max_length=2000)
@@ -83,7 +94,7 @@ def create_bid(payload: CreateBidRequest) -> dict[str, Any]:
     try:
         service = _get_service()
         record = service.create_bid(
-            owner_id=settings.database_path.stem or "local_user",
+            owner_id=get_owner_id(),
             title=payload.title,
             description=payload.description,
             category=payload.category,
@@ -121,7 +132,7 @@ def create_bid(payload: CreateBidRequest) -> dict[str, Any]:
         raise HTTPException(status_code=500, detail="An unexpected local error occurred.") from exc
 
 
-@router.get("/bids", response_model=list[BidResponse])
+@router.get("/bids", response_model=BidListResponse)
 def list_bids(
     owner_id: str | None = Query(default=None, min_length=1),
     status: str | None = Query(default=None, max_length=50),
@@ -312,7 +323,7 @@ def archive_bid(bid_id: str) -> dict[str, Any]:
     try:
         service = _get_service()
         # For local single-user design, we use the database path stem as owner
-        bid = service.archive_bid(bid_id, caller_owner_id=settings.database_path.stem or "local_user")
+        bid = service.archive_bid(bid_id, caller_owner_id=get_owner_id())
         return {
             "bid_id": bid["bid_id"],
             "title": bid["title"],
@@ -337,7 +348,7 @@ def delete_bid(bid_id: str) -> dict[str, Any]:
     """
     try:
         service = _get_service()
-        result = service.delete_bid(bid_id, caller_owner_id=settings.database_path.stem or "local_user")
+        result = service.delete_bid(bid_id, caller_owner_id=get_owner_id())
         if result:
             return {"result": "deleted", "bid_id": bid_id}
         else:
