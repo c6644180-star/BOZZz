@@ -19,6 +19,9 @@ from app.api.files import router as files_router
 from app.api.intents import get_engine, router as intents_router
 from app.api.memory import router as memory_router
 from app.api.modules import get_module_service, router as modules_router
+from app.api.identities import router as identities_router
+from app.api.preferences import router as preferences_router
+from app.api.bids import router as bids_router
 from app.api.tts import get_tts
 from app.api.tts import router as tts_router
 from app.core.config import get_settings
@@ -75,6 +78,9 @@ app.add_middleware(
 app.include_router(chat_router)
 app.include_router(intents_router)
 app.include_router(modules_router)
+app.include_router(identities_router)
+app.include_router(preferences_router)
+app.include_router(bids_router)
 app.include_router(files_router)
 app.include_router(bci_router)
 app.include_router(memory_router)

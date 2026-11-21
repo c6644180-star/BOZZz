@@ -149,6 +149,80 @@ CREATE TABLE IF NOT EXISTS agent_tasks (
 
 CREATE INDEX IF NOT EXISTS idx_agent_tasks_created ON agent_tasks(created_at DESC);
 
+CREATE TABLE IF NOT EXISTS identities (
+    id TEXT PRIMARY KEY,
+    owner_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    personality_config TEXT NOT NULL DEFAULT '{}',
+    role TEXT NOT NULL DEFAULT 'assistant',
+    greeting TEXT NOT NULL DEFAULT 'Hello!',
+    voice_configuration TEXT NOT NULL DEFAULT '{}',
+    appearance_configuration TEXT NOT NULL DEFAULT '{}',
+    behaviour_configuration TEXT NOT NULL DEFAULT '{}',
+    associated_projects TEXT NOT NULL DEFAULT '[]',
+    approved_tool_references TEXT NOT NULL DEFAULT '[]',
+    memory_ownership_settings TEXT NOT NULL DEFAULT '{}',
+    creation_timestamp TEXT NOT NULL,
+    updated_timestamp TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active',
+    schema_version INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE INDEX IF NOT EXISTS idx_identities_created ON identities(creation_timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_identities_name ON identities(name);
+
+CREATE TABLE IF NOT EXISTS preference_profiles (
+    id TEXT PRIMARY KEY,
+    owner_id TEXT NOT NULL,
+    identity_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    visual_preferences TEXT NOT NULL DEFAULT '{}',
+    ai_behaviour_preferences TEXT NOT NULL DEFAULT '{}',
+    productivity_preferences TEXT NOT NULL DEFAULT '{}',
+    accessibility_preferences TEXT NOT NULL DEFAULT '{}',
+    functional_preferences TEXT NOT NULL DEFAULT '{}',
+    privacy_preferences TEXT NOT NULL DEFAULT '{}',
+    project_specific_settings TEXT NOT NULL DEFAULT '{}',
+    creation_timestamp TEXT NOT NULL,
+    updated_timestamp TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active',
+    schema_version INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE INDEX IF NOT EXISTS idx_preference_profiles_identity ON preference_profiles(identity_id);
+CREATE INDEX IF NOT EXISTS idx_preference_profiles_name ON preference_profiles(name);
+
+CREATE TABLE IF NOT EXISTS bids (
+    bid_id TEXT PRIMARY KEY,
+    owner_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    ai_interpretation TEXT,
+    intended_outcome TEXT,
+    category TEXT,
+    related_project TEXT,
+    creation_timestamp TEXT NOT NULL,
+    updated_timestamp TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'captured',
+    schema_version INTEGER NOT NULL DEFAULT 1,
+    version INTEGER NOT NULL DEFAULT 1,
+    suggestions TEXT NOT NULL DEFAULT '[]',
+    approved_modifications TEXT NOT NULL DEFAULT '[]',
+    dependencies TEXT NOT NULL DEFAULT '[]',
+    related_ideas TEXT NOT NULL DEFAULT '[]',
+    sharing_permissions TEXT NOT NULL DEFAULT 'private',
+    implementation_references TEXT NOT NULL DEFAULT '[]',
+    testing_evidence TEXT NOT NULL DEFAULT '[]',
+    original_title TEXT NOT NULL,
+    original_description TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_bids_owner ON bids(owner_id);
+CREATE INDEX IF NOT EXISTS idx_bids_category ON bids(category);
+CREATE INDEX IF NOT EXISTS idx_bids_project ON bids(related_project);
+CREATE INDEX IF NOT EXISTS idx_bids_status ON bids(status);
+
 CREATE TABLE IF NOT EXISTS agent_steps (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     task_id TEXT NOT NULL REFERENCES agent_tasks(id) ON DELETE CASCADE,

@@ -38,6 +38,8 @@ import IntentMapPage from './pages/IntentMapPage'
 import NotificationsPage from './pages/NotificationsPage'
 import SettingsPage from './pages/SettingsPage'
 import SystemPage from './pages/SystemPage'
+import IdentityManagerPage from './pages/IdentityManagerPage'
+import PreferenceManagerPage from './pages/PreferenceManagerPage'
 import GesturePage from './pages/GesturePage'
 import ModulesPage from './pages/ModulesPage'
 import CallsPage from './pages/CallsPage'
@@ -85,6 +87,8 @@ function RouteView({ status }: { status: ConnStatus }) {
           <Route path="/memory" element={<MemoryPage />} />
           <Route path="/intent-map" element={<IntentMapPage />} />
           <Route path="/modules" element={<ModulesPage />} />
+          <Route path="/identity-manager" element={<IdentityManagerPage />} />
+          <Route path="/preference-manager" element={<PreferenceManagerPage />} />
           <Route path="/spatial" element={<SpatialPage />} />
           <Route path="/3d" element={<ModelViewerPage />} />
           <Route path="/messages" element={<MessagesPage />} />
