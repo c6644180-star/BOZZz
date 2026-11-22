@@ -143,11 +143,19 @@ export function BozzVoiceProvider({ children }: { children: ReactNode }) {
           createdAt: Date.parse(item.created_at),
           local: true,
         })))
-      }).catch(() => {
+      }).catch((error: unknown) => {
         if (!active) return
-        conversationIdRef.current = null
-        window.localStorage.removeItem('bozz.activeConversationId')
-        setMessages([])
+        const status = typeof error === 'object' && error !== null && 'status' in error
+          ? Number((error as { status?: unknown }).status)
+          : 0
+        if (status === 404) {
+          conversationIdRef.current = null
+          window.localStorage.removeItem('bozz.activeConversationId')
+          setMessages([])
+          return
+        }
+        // Keep the saved ID during a temporary backend outage; retry on next launch.
+        setCaption('Saved conversation is waiting for the local backend to reconnect.')
       })
     }
     const onIdentityChanged = () => {
