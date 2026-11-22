@@ -66,6 +66,10 @@ export interface DesktopLaunchResult { ok: boolean; appId?: DesktopAppId; reason
 
 export interface ManagedDesktopWindow { id: 'main' | 'mini'; title: string; visible: boolean; focused: boolean; minimized: boolean }
 export interface ManagedWindowFocusResult { ok: boolean; id?: 'main' | 'mini'; reason?: string }
+export type ExternalDesktopAppId = 'notepad' | 'paint' | 'calculator' | 'edge' | 'chrome' | 'vscode'
+export interface ExternalDesktopWindow { id: string; appId: ExternalDesktopAppId; appName: string }
+export interface ExternalWindowListResult { ok: boolean; windows: ExternalDesktopWindow[]; reason?: string }
+export interface ExternalWindowFocusResult { ok: boolean; appId?: ExternalDesktopAppId; appName?: string; reason?: string }
 
 export interface DesktopBridge {
   isDesktop: true
@@ -74,6 +78,8 @@ export interface DesktopBridge {
   launchApp: (appId: DesktopAppId) => Promise<DesktopLaunchResult>
   listManagedWindows: () => Promise<ManagedDesktopWindow[]>
   focusManagedWindow: (id: 'main' | 'mini') => Promise<ManagedWindowFocusResult>
+  listExternalWindows: () => Promise<ExternalWindowListResult>
+  focusExternalWindow: (id: string) => Promise<ExternalWindowFocusResult>
   openFull: () => void
   quit: () => void
   publishMiniState: (state: MiniState) => void
