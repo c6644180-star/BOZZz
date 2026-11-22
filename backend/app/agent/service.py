@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
+import hashlib
 import json
 import secrets
 import threading
@@ -515,6 +516,30 @@ class AgentService:
                 raise AgentApprovalError("That approval does not belong to the pending step.")
             if time.monotonic() > float(pending.get("expires_monotonic") or 0):
                 raise AgentApprovalError("That approval expired. The step is being cancelled.")
+            current_step = next(
+                (item for item in (record.plan.steps if record.plan else [])
+                 if item.id == pending.get("step_id")),
+                None,
+            )
+            current_fingerprint = self._action_fingerprint(current_step) if current_step else ""
+            if not current_fingerprint or not secrets.compare_digest(
+                current_fingerprint, str(pending.get("action_fingerprint") or "")
+            ):
+                record.pending_approval = None
+                record.approval_result = False
+                record.cancel.set()
+                record.state = "stopped"
+                record.updated_at = _iso_now()
+                self._audit(
+                    record,
+                    "approval_invalidated",
+                    "stopped",
+                    "The pending action changed after its approval preview; execution was cancelled.",
+                )
+                self._condition.notify_all()
+                raise AgentApprovalError(
+                    "The action changed after the approval preview. It was cancelled; review a new plan."
+                )
             record.approval_result = bool(approve)
             record.state = "running" if approve else "stopped"
             record.pending_approval = None
@@ -909,6 +934,8 @@ class AgentService:
         approval = {
             "approval_id": secrets.token_urlsafe(18),
             "step_id": step.id,
+            "action_fingerprint": self._action_fingerprint(step),
+            "action_preview": self._approval_action_preview(step),
             "kind": "domain" if decision.needs_domain_approval else "step",
             "label": decision.label,
             "detail": (
@@ -951,6 +978,55 @@ class AgentService:
             return bool(result)
 
     # ------------------------------------------------------------------- helpers
+
+    @staticmethod
+    def _action_fingerprint(step: PlanStep | None) -> str:
+        """Bind a user's approval to the exact typed action parameters."""
+        if step is None:
+            return ""
+        canonical = json.dumps(
+            step.action.to_dict(),
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=True,
+        )
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _approval_action_preview(step: PlanStep) -> dict[str, Any]:
+        """Build a readable, privacy-conscious preview of the exact pending action."""
+        action_id = step.action.type
+        params = step.action.params
+        preview: dict[str, Any] = {"action_id": action_id, "parameters": {}}
+        visible: dict[str, str] = {}
+        if action_id == "browser.open":
+            from urllib.parse import urlsplit, urlunsplit
+            parts = urlsplit(str(params.get("url") or ""))
+            visible["url"] = urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
+            if parts.query or parts.fragment:
+                visible["note"] = "Query string and fragment hidden for privacy."
+        elif action_id == "browser.type":
+            visible["field"] = str(params.get("field") or "")
+            visible["text"] = str(params.get("text") or "")[:240]
+        elif action_id in ("browser.click", "browser.click_link"):
+            visible.update({key: str(value) for key, value in params.items()})
+        elif action_id == "browser.search":
+            visible["query"] = str(params.get("query") or "")[:240]
+        elif action_id == "browser.download":
+            visible["filename"] = str(params.get("name") or "")
+        elif action_id == "browser.upload":
+            visible["filename"] = Path(str(params.get("path") or "")).name
+            visible["note"] = "Full local path is hidden."
+        elif action_id == "app.launch":
+            if params.get("name"):
+                visible["application"] = str(params["name"])
+            if params.get("path"):
+                visible["filename"] = Path(str(params["path"])).name
+                visible["note"] = "Full local path is hidden."
+        else:
+            visible = {key: str(value)[:160] for key, value in params.items()}
+        preview["parameters"] = visible
+        return preview
 
     def _handoff(self, record: _Task, message: str) -> None:
         with self._lock:
@@ -1046,6 +1122,7 @@ class AgentService:
                 "tier": pending["tier"],
                 "expires_in_ms": max(0, int((float(pending["expires_monotonic"]) - time.monotonic()) * 1000)),
                 "expires_at": pending["expires_at"],
+                "action_preview": dict(pending.get("action_preview") or {}),
             }
         return {
             "id": record.id,
