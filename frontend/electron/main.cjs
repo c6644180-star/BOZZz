@@ -205,8 +205,16 @@ function createMainWindow() {
     mainWindow?.hide()
     tray?.displayBalloon?.({ title: 'BOZZ is still running', content: 'BOZZ is idle. Microphone and camera remain off until you enable them.' })
   })
+  mainWindow.webContents.on('render-process-gone', () => {
+    // A renderer crash ends its MediaStream. Clear the tray indicator rather
+    // than leaving a stale microphone-active status behind.
+    wakeWordActive = false
+    refreshTrayStatus()
+  })
   mainWindow.on('closed', () => {
+    wakeWordActive = false
     mainWindow = null
+    refreshTrayStatus()
     if (miniWindow && !miniWindow.isDestroyed()) miniWindow.destroy()
   })
 
