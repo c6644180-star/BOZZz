@@ -87,7 +87,16 @@ class AgentStore:
         payload["plan"] = json.loads(payload.pop("plan_json")) if payload.get("plan_json") else None
         payload["report"] = json.loads(payload.pop("report_json")) if payload.get("report_json") else None
         payload["dry_run"] = bool(payload.get("dry_run"))
-        payload["steps"] = [dict(item) for item in steps]
+        payload["steps"] = [
+            {
+                "id": item["step_id"],
+                "status": item["status"],
+                "level": item["level"],
+                "detail": item["detail"],
+                "updated_at": item["updated_at"],
+            }
+            for item in steps
+        ]
         return payload
 
 
