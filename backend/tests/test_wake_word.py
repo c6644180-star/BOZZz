@@ -148,6 +148,14 @@ class LocalWakeWordDetectorTests(unittest.TestCase):
                 detector.score_frame(FakeFrame(ndim=2))
         self.assertEqual(len(model.frames), 1)
 
+    def test_reset_clears_model_state_without_stopping_detector(self) -> None:
+        model = FakeModel()
+        detector = LocalWakeWordDetector(model)
+        detector.reset()
+        self.assertEqual(model.reset_calls, 1)
+        with patch.dict(sys.modules, {"numpy": FakeNumpy()}):
+            self.assertEqual(detector.score_frame(FakeFrame()), {"bozz": 0.42})
+
     def test_stop_resets_model_and_blocks_future_frames(self) -> None:
         model = FakeModel()
         detector = LocalWakeWordDetector(model)
