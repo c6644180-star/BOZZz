@@ -438,6 +438,15 @@ ipcMain.on('mini:set-mode', (event, mode) => {
   else exitMini()
 })
 
+// Launch only fixed applications, only after a direct request from the main renderer.
+ipcMain.handle('desktop:launch-app', (event, appId) => {
+  if (!isFromMain(event)) return { ok: false, reason: 'Untrusted desktop request.' }
+  if (!['calculator', 'notepad', 'paint'].includes(appId)) {
+    return { ok: false, reason: 'This application is not on the BOZZ allowlist.' }
+  }
+  return launchDesktopApp(appId)
+})
+
 ipcMain.handle('mini:get-mode', (event) => {
   if (!isFromMain(event) && !isFromMini(event)) return 'full'
   return modeState.mode
