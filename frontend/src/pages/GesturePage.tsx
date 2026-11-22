@@ -34,7 +34,7 @@ export default function GesturePage() {
   return (
     <ModulePage
       title="Gesture Lab"
-      subtitle="Local hand tracking with one shared event bus, honest diagnostics, calibration, teachable gestures, and a mouse-only desktop adapter."
+      subtitle="Local hand tracking with calibration and teachable gestures. On desktop, explicitly started gestures can keep running while BOZZ is hidden; the tray shows camera status and provides a stop control."
       tone="live"
     >
       <div className="hgi-toolbar">
@@ -107,7 +107,7 @@ export default function GesturePage() {
       <div className="hgi-card hgi-card--wide">
         <h3><Hand /> First run, in order</h3>
         <ol className="hgi-phases">
-          <li><strong>Start gestures</strong><span>Allow the camera. A green CAMERA ACTIVE dot appears in the HUD; Off releases it immediately.</span></li>
+          <li><strong>Start gestures</strong><span>Allow the camera. While BOZZ is hidden, gesture processing stays active until you stop it. The tray shows Camera ACTIVE and includes Stop camera &amp; gestures. Off releases the camera.</span></li>
           <li><strong>Calibrate</strong><span>Hold open palm, pinch, fist, and relaxed. Your thresholds are saved locally.</span></li>
           <li><strong>Try Orb mode</strong><span>Pinch and move to spin. Pinch with both hands and spread to zoom. Flick to reset.</span></li>
           <li><strong>Measure</strong><span>Run the 20-trial test for a real hit rate, false-trigger rate, and average latency.</span></li>
