@@ -91,6 +91,7 @@ export interface DesktopBridge {
   onMiniPause: (listener: (pause: MiniPause) => void) => () => void
   onMiniMode: (listener: (mode: { mode: MiniMode }) => void) => () => void
   onMiniAction: (listener: (action: MiniAction) => void) => () => void
+  onStopCamera: (listener: () => void) => () => void
 }
 
 declare global {
