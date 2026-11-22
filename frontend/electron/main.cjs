@@ -69,6 +69,7 @@ let emergencyShortcutRegistered = false
 let tray = null
 let isQuitting = false
 let gestureCameraActive = false
+let wakeWordActive = false
 
 function isFromMain(event) {
   return Boolean(mainWindow && !mainWindow.isDestroyed() && event.sender === mainWindow.webContents)
@@ -90,7 +91,7 @@ function sendMain(channel, payload) {
 
 function updateMainBackgroundActivity() {
   return setBackgroundActivity(mainWindow, {
-    cameraActive: lastState.cameraActive || gestureCameraActive,
+    cameraActive: lastState.cameraActive || gestureCameraActive || wakeWordActive,
     miniMode: modeState.mode === 'mini',
   })
 }
@@ -135,11 +136,12 @@ function hardenWindow(win) {
 
 function refreshTrayStatus() {
   if (!tray) return
-  const mic = lastState.listening ? 'ACTIVE' : 'off'
+  const mic = lastState.listening || wakeWordActive ? 'ACTIVE' : 'off'
   const camera = lastState.cameraActive || gestureCameraActive ? 'ACTIVE' : 'off'
   tray.setToolTip(`BOZZ — Microphone: ${mic} · Camera: ${camera}`)
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: `Microphone: ${mic}`, enabled: false },
+    { label: 'Stop wake-word listener', enabled: wakeWordActive, click: () => sendMain('voice:stop-wake-word') },
     { label: `Camera: ${camera}`, enabled: false },
     { label: 'Stop camera & gestures', enabled: gestureCameraActive, click: () => sendMain('hgi:stop-camera') },
     { type: 'separator' },
@@ -452,6 +454,20 @@ ipcMain.on('mini:set-mode', (event, mode) => {
 })
 
 // Expose only BOZZ-owned windows. Other applications are deliberately out of scope.
+ipcMain.handle('desktop:set-wake-word-activity', (event, active) => {
+  if (!isFromMain(event)) return { ok: false, reason: 'Untrusted desktop request.' }
+  if (typeof active !== 'boolean') return { ok: false, reason: 'Wake-word activity must be a boolean.' }
+  wakeWordActive = active
+  refreshTrayStatus()
+  return updateMainBackgroundActivity()
+})
+
+ipcMain.handle('desktop:show-main', (event) => {
+  if (!isFromMain(event)) return { ok: false, reason: 'Untrusted desktop request.' }
+  showMainWindow()
+  return { ok: true }
+})
+
 ipcMain.handle('desktop:set-background-activity', (event, active) => {
   if (!isFromMain(event)) return { ok: false, reason: 'Untrusted desktop request.' }
   if (typeof active !== 'boolean') return { ok: false, reason: 'Background activity must be a boolean.' }
