@@ -4,6 +4,10 @@
 
 BOZZ's native tray now offers explicit menu actions for Calculator, Notepad and Paint on Windows. The launcher uses a fixed executable allowlist and starts each application with an empty argument list, `shell: false`, and detached stdio. No command text, path, or arguments are accepted from the renderer or an AI model.
 
+## In-app launcher
+
+The Settings page now includes a small app launcher. In the installed Electron desktop app, each button first asks the user to confirm, then invokes a narrow preload bridge. The main process validates the sender and app ID again before calling the fixed allowlist helper. In a browser, the controls are unavailable and display that limitation. No AI/chat pathway is connected to this IPC handler.
+
 ## Boundaries
 
 - Windows only in this milestone; other platforms return an unsupported result.
