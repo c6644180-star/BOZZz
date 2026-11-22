@@ -18,13 +18,32 @@ export default function SettingsPage() {
   const { settings, updateSettings, tts, mic, ai } = useBozzVoice()
   const hgi = useHgi()
   const [backend, setBackend] = useState<ConnStatus>('checking')
+  const [nativePrivacy, setNativePrivacy] = useState<{ platform: string; microphone: string; camera: string; available: boolean } | null>(null)
   useEffect(() => {
     let alive = true
     void probeBackend().then((s) => { if (alive) setBackend(s) })
     return () => { alive = false }
   }, [])
 
+  useEffect(() => {
+    let alive = true
+    const desktop = (window as Window & { bozzDesktop?: { getMediaAccessStatus?: () => Promise<{ platform: string; microphone: string; camera: string; available: boolean }> } }).bozzDesktop
+    if (desktop?.getMediaAccessStatus) {
+      void desktop.getMediaAccessStatus().then((status) => { if (alive) setNativePrivacy(status) }).catch(() => {
+        if (alive) setNativePrivacy({ platform: 'desktop', microphone: 'unknown', camera: 'unknown', available: false })
+      })
+    }
+    return () => { alive = false }
+  }, [])
+
   const cameraSupported = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia
+  const privacyLabel = (status: string) => ({
+    granted: 'granted by OS',
+    denied: 'denied by OS',
+    restricted: 'restricted by OS',
+    'not-determined': 'not yet decided by OS',
+    unknown: 'unknown / not exposed by this platform',
+  }[status] ?? 'unknown / not exposed by this platform')
 
   return (
     <ModulePage title="Settings" subtitle="Preferences are stored on this device. Every status below reflects a real capability check." tone="live">
@@ -102,6 +121,9 @@ export default function SettingsPage() {
           <p><strong>Local AI:</strong> {ai.available ? `${ai.provider} · ${ai.configuredModel}` : `unavailable — ${ai.detail ?? 'checking…'}`}</p>
           <p><strong>Speech output:</strong> {tts.available ? 'available in this browser' : 'not supported in this browser'}</p>
           <p><strong>Microphone:</strong> {mic.listening ? 'ACTIVE — voice input is listening' : 'OFF — no background microphone listener is running'}</p>
+          {nativePrivacy?.available && <p><strong>Windows/macOS microphone permission:</strong> {privacyLabel(nativePrivacy.microphone)}</p>}
+          {nativePrivacy?.available && <p><strong>Windows/macOS camera permission:</strong> {privacyLabel(nativePrivacy.camera)}</p>}
+          {nativePrivacy && !nativePrivacy.available && <p><strong>Native OS privacy status:</strong> unavailable on this platform; use the operating system privacy settings to review access.</p>}
           <p><strong>Voice input:</strong> {mic.available ? 'available in this browser' : `not supported${mic.reason ? ` (${mic.reason})` : ''}`}</p>
           <p><strong>Camera:</strong> {cameraSupported ? 'supported — only active after you grant permission in Gesture Lab' : 'not available in this browser'}</p>
           <p>
