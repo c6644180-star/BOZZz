@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { UndoStack } from '../undo'
 import { classifyLighting, landmarkCoverage } from '../lighting'
 import { CpuMonitor, computeMainThreadLoad } from '../cpu'
-import { canOpenMicrophone, pttLatencyMs, resolveVoiceMode, voiceModeNeedsBackgroundListening } from '../voice'
+import { canOpenMicrophone, canStartBackgroundListening, pttLatencyMs, resolveVoiceMode, voiceModeNeedsBackgroundListening } from '../voice'
 import { getWakeWordEngine, wakeWordStatus } from '../wakeWord'
 
 describe('undo stack', () => {
@@ -69,6 +69,15 @@ describe('voice modes', () => {
     expect(pttLatencyMs(1000, 1420)).toBe(420)
     expect(pttLatencyMs(1000, 900)).toBeNull()
     expect(pttLatencyMs(NaN, 900)).toBeNull()
+  })
+
+  it('requires explicit consent, an installed local engine, and OS permission before background listening', () => {
+    const base = { mode: 'wake-word' as const, consentGranted: true, engineAvailable: true, osPermissionGranted: true }
+    expect(canStartBackgroundListening({ ...base, consentGranted: false })).toBe(false)
+    expect(canStartBackgroundListening({ ...base, engineAvailable: false })).toBe(false)
+    expect(canStartBackgroundListening({ ...base, osPermissionGranted: false })).toBe(false)
+    expect(canStartBackgroundListening({ ...base, mode: 'push-to-talk' })).toBe(false)
+    expect(canStartBackgroundListening(base)).toBe(true)
   })
 
   it('keeps the microphone closed until an explicit action outside wake-word mode', () => {
