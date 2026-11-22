@@ -282,7 +282,7 @@ class BidService:
         record = self._store.get_bid(bid_id)
         if record is None:
             raise ValueError(f"BID '{bid_id}' was not found.")
-        if record.owner_id != caller_owner_id:
+        if record["owner_id"] != caller_owner_id:
             raise PermissionError(
                 f"You do not own BID '{record['title']}'."
             )
@@ -306,7 +306,7 @@ class BidService:
         record = self._store.get_bid(bid_id)
         if record is None:
             return False
-        if record.owner_id != caller_owner_id:
+        if record["owner_id"] != caller_owner_id:
             raise PermissionError(
                 f"You do not own BID '{record['title']}'."
             )
