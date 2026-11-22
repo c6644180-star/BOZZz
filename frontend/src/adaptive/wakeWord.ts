@@ -14,12 +14,12 @@ export interface WakeWordEngine {
 }
 
 export const WAKE_WORD_NOT_INSTALLED =
-  'Wake word engine not installed. BOZZ has no built-in offline wake-word model, so nothing is listening in the background.'
+  'No trained BOZZ classifier is bundled. Configure and validate a local model before manually starting the detector; the microphone stays off by default.'
 
 export const WAKE_WORD_OPTIONS = [
   'Use push-to-talk (works today, no extra download).',
   'Use the manual mic button, then say “BOZZ …” (browser speech service, not offline).',
-  'Install a local wake-word model such as openWakeWord or Porcupine with your own licence, then add an adapter that implements this interface.',
+  'Configure a trained local BOZZ classifier and its feature models, validate them in Settings, then manually start the consent-gated detector.',
 ]
 
 // Interface only. BOZZ ships no wake-word model, so this returns an honest
