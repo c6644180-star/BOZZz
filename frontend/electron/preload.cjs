@@ -51,6 +51,7 @@ const api = {
     const mode = await ipcRenderer.invoke('mini:get-mode')
     return mode === 'mini' ? 'mini' : 'full'
   },
+  getMediaAccessStatus: async () => ipcRenderer.invoke('privacy:get-media-access'),
   openFull: () => ipcRenderer.send('mini:open-full'),
   quit: () => ipcRenderer.send('mini:quit'),
   publishMiniState: (state) => {
