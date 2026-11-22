@@ -52,6 +52,11 @@ const api = {
     return mode === 'mini' ? 'mini' : 'full'
   },
   getMediaAccessStatus: async () => ipcRenderer.invoke('privacy:get-media-access'),
+  setWakeWordActivity: async (active) => {
+    if (typeof active !== 'boolean') return { ok: false, reason: 'Wake-word activity must be a boolean.' }
+    return ipcRenderer.invoke('desktop:set-wake-word-activity', active)
+  },
+  showMain: () => ipcRenderer.invoke('desktop:show-main'),
   setBackgroundActivity: async (active) => {
     if (typeof active !== 'boolean') return { ok: false, reason: 'Background activity must be a boolean.' }
     return ipcRenderer.invoke('desktop:set-background-activity', active)
@@ -85,6 +90,7 @@ const api = {
   onMiniMode: (callback) => subscribe('mini:mode', callback),
   onMiniAction: (callback) => subscribe('mini:action', callback),
   onStopCamera: (callback) => subscribe('hgi:stop-camera', callback),
+  onStopWakeWord: (callback) => subscribe('voice:stop-wake-word', callback),
 }
 
 contextBridge.exposeInMainWorld('bozzDesktop', api)
