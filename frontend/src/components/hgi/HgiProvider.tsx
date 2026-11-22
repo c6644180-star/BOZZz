@@ -572,6 +572,11 @@ export function HgiProvider({ children }: { children: ReactNode }) {
     stopLiveRef.current = stopLive
   }, [stopLive])
 
+  useEffect(() => {
+    const unsubscribe = window.bozzDesktop?.onStopCamera(() => stopLiveRef.current())
+    return () => unsubscribe?.()
+  }, [])
+
   const stopGestures = useCallback(
     (reason?: string) => {
       stopLive()
