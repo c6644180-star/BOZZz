@@ -8,7 +8,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-_VERSION = re.compile(r"^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z.-]+)?$")
+_VERSION = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?$")
 _ARTIFACT_TYPE = "bozz-wake-word-classifier"
 
 
@@ -41,7 +41,6 @@ def validate_model_bundle(bundle_dir: str | Path) -> dict[str, Any]:
     if not root.is_dir():
         raise ValueError("Candidate bundle directory does not exist.")
     manifest = _json_file(root / "manifest.json")
-
     required = (
         "schema_version", "artifact_type", "model_id", "version", "target_phrase",
         "sample_rate_hz", "model_file", "sha256", "training_dataset_id",
@@ -114,7 +113,7 @@ def validate_model_bundle(bundle_dir: str | Path) -> dict[str, Any]:
 
 
 def stage_model_candidate(bundle_dir: str | Path, registry_dir: str | Path) -> dict[str, Any]:
-    """Copy a validated candidate into a local immutable-by-convention staging folder."""
+    """Copy a validated candidate into a local staging folder without activation."""
     bundle = Path(bundle_dir).expanduser().resolve()
     report = validate_model_bundle(bundle)
     registry = Path(registry_dir).expanduser().resolve()
@@ -132,9 +131,8 @@ def stage_model_candidate(bundle_dir: str | Path, registry_dir: str | Path) -> d
         staged_manifest = dict(manifest)
         staged_manifest["model_file"] = "model.onnx"
         (temporary / "manifest.json").write_text(
-            json.dumps(staged_manifest, indent=2) + "\\n", encoding="utf-8"
+            json.dumps(staged_manifest, indent=2) + "\n", encoding="utf-8"
         )
-        # Revalidate the copied bytes before making the version visible.
         staged_report = validate_model_bundle(temporary)
         if staged_report["sha256"] != report["sha256"]:
             raise ValueError("Staged model checksum changed during copy.")
