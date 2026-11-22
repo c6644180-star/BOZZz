@@ -74,9 +74,10 @@ def export_conversation(conversation_id: str) -> dict[str, Any]:
         raise _not_found(exc) from exc
 
 
-@router.delete("/conversations/{conversation_id}", status_code=204)
-def delete_conversation(conversation_id: str) -> None:
+@router.delete("/conversations/{conversation_id}")
+def delete_conversation(conversation_id: str) -> dict[str, bool]:
     try:
         get_conversation_store().delete(conversation_id)
     except ConversationNotFound as exc:
         raise _not_found(exc) from exc
+    return {"deleted": True}
