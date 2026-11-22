@@ -3,16 +3,15 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.db.database import Database
 from app.db.store import IntentStore
-from app.identities.service import IdentityService, _iso_now
+from app.identities.service import IdentityService
 from app.modules import PermissionDenied
-from app.permissions.policy import assess
 
 router = APIRouter(tags=["identity-management"])
 
