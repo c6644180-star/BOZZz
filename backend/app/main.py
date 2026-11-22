@@ -12,6 +12,7 @@ from app.api.agent import get_agent
 from app.api.agent import router as agent_router
 from app.api.bci import get_bci_service
 from app.api.bci import router as bci_router
+from app.api.backups import router as backups_router
 from app.api.chat import router as chat_router
 from app.api.conversations import router as conversations_router
 from app.api.desktop import get_desktop
@@ -85,6 +86,7 @@ app.include_router(preferences_router)
 app.include_router(bids_router)
 app.include_router(files_router)
 app.include_router(bci_router)
+app.include_router(backups_router)
 app.include_router(memory_router)
 app.include_router(tts_router)
 app.include_router(desktop_router)
