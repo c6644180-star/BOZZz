@@ -333,6 +333,8 @@ def archive_bid(bid_id: str) -> dict[str, Any]:
         }
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
     except Exception as exc:
         logger = configure_logging("INFO").getChild("bid-api")
         logger.exception("unexpected error archiving bid")
