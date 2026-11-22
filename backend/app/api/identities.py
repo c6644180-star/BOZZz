@@ -121,28 +121,10 @@ def create_identity(payload: CreateIdentityRequest) -> dict[str, Any]:
             appearance_configuration=payload.appearance_configuration,
             behaviour_configuration=payload.behaviour_configuration,
         )
-        return {
-            "id": record.id,
-            "name": record.name,
-            "description": record.description,
-            "personality": _parse_config(record.personality_config),
-            "role": record.role,
-            "greeting": record.greeting,
-            "voice": _parse_config(record.voice_configuration),
-            "appearance": _parse_config(record.appearance_configuration),
-            "behaviour": _parse_config(record.behaviour_configuration),
-            "associated_projects": json.loads(record.associated_projects)
-            if record.associated_projects
-            else [],
-            "approved_tools": json.loads(record.approved_tool_references)
-            if record.approved_tool_references
-            else [],
-            "memory_ownership": _parse_config(record.memory_ownership_settings),
-            "creation_timestamp": record.creation_timestamp,
-            "updated_timestamp": record.updated_timestamp,
-            "status": record.status,
-            "schema_version": record.schema_version,
-        }
+        created = service.get_identity(record.id)
+        if created is None:
+            raise RuntimeError("Created identity could not be read back.")
+        return created
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except PermissionDenied as exc:
