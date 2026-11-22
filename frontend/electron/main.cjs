@@ -120,17 +120,27 @@ function hardenWindow(win) {
   win.webContents.on('will-attach-webview', (event) => event.preventDefault())
 }
 
+function refreshTrayStatus() {
+  if (!tray) return
+  const mic = lastState.listening ? 'ACTIVE' : 'off'
+  const camera = lastState.cameraActive ? 'ACTIVE' : 'off'
+  tray.setToolTip(`BOZZ — Microphone: ${mic} · Camera: ${camera}`)
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: `Microphone: ${mic}`, enabled: false },
+    { label: `Camera: ${camera}`, enabled: false },
+    { type: 'separator' },
+    { label: 'Open BOZZ', click: () => showMainWindow() },
+    { type: 'separator' },
+    { label: 'Quit BOZZ', click: () => app.quit() },
+  ]))
+}
+
 function createTray() {
   if (tray) return
   // A tiny bundled PNG keeps the tray icon local and reliable on Windows.
   const icon = nativeImage.createFromDataURL('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAyElEQVR4nGPk4Bb6zzCAgAWXxL21ulS1SCn4MlZxRvQQoLbFhByC4gBky3G5mFyAy2wmeliObiayXUz4FNLSESgOgLmIlpajOwJmJ85cgA28f3WboBpBMVWSHESUA4ixGF0tsQ7BSAP0BgQdQIrvydFHUhqAAWKCl1gHDP4oGHXAqANGHTDqAFoDsopicusHbIBgCJBav5Oqb2hEAcw3tGgRwZvl9GoXotuDEQW07JhgMxvuAFztdlpYjmzX4Oqa0dIhRHdO6Q0AC7pP9smkSCsAAAAASUVORK5CYII=')
   tray = new Tray(icon)
-  tray.setToolTip('BOZZ — idle in background. Microphone and camera are off.')
-  tray.setContextMenu(Menu.buildFromTemplate([
-    { label: 'Open BOZZ', click: () => showMainWindow() },
-    { type: 'separator' },
-    { label: 'Quit BOZZ', click: () => app.quit() },
-  ]))
+  refreshTrayStatus()
   tray.on('click', () => showMainWindow())
 }
 
@@ -443,6 +453,7 @@ ipcMain.on('mini:state', (event, raw) => {
   const state = sanitizeMiniState(raw)
   if (!state) return
   lastState = state
+  refreshTrayStatus()
   modeState = reduceMode(modeState, { type: 'mic', value: state.listening })
   modeState = reduceMode(modeState, { type: 'camera', value: state.cameraActive })
   sendMini('mini:state', state)
