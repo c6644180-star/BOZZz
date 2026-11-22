@@ -47,8 +47,9 @@ class AgentIdempotencyTests(unittest.TestCase):
             connection.execute("UPDATE agent_tasks SET state = 'running' WHERE id = ?", (task_id,))
             connection.execute(
                 """
-                INSERT INTO agent_steps(task_id, step_id, status, level, detail, updated_at)
-                VALUES (?, ?, 'running', 'attempted', 'Adapter call started', '2026-11-22T00:00:00Z')
+                UPDATE agent_steps
+                SET status = 'running', level = 'attempted', detail = 'Adapter call started'
+                WHERE task_id = ? AND step_id = ?
                 """,
                 (task_id, created["plan"]["steps"][0]["id"]),
             )
