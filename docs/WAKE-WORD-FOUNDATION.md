@@ -95,6 +95,10 @@ The tray shows microphone activity while this listener is active. Electron disab
 
 The streaming pipeline is a development feature and must remain disabled unless the local model is trained and evaluated. CI can test guards and score logic, but cannot validate a physical microphone, Windows permission prompts, acoustic performance, or actual wake-word accuracy.
 
+## Evaluation lab
+
+See [WAKE-WORD-EVALUATION.md](WAKE-WORD-EVALUATION.md) for the local labelled-WAV manifest format, threshold sweep command, privacy rules, and interpretation guidance. The evaluator does not train a classifier or collect audio.
+
 ## Upstream references
 
 - openWakeWord usage and frame input format: https://github.com/dscripka/openWakeWord
