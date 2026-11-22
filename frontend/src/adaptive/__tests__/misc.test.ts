@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { UndoStack } from '../undo'
 import { classifyLighting, landmarkCoverage } from '../lighting'
 import { CpuMonitor, computeMainThreadLoad } from '../cpu'
-import { canOpenMicrophone, pttLatencyMs, resolveVoiceMode, voiceModeNeedsBackgroundListening } from '../voice'
-import { getWakeWordEngine, wakeWordStatus } from '../wakeWord'
+import { canOpenMicrophone, canStartBackgroundListening, pttLatencyMs, resolveVoiceMode, voiceModeNeedsBackgroundListening } from '../voice'
+import { getWakeWordEngine, startWakeWordEngineSafely, wakeWordStatus } from '../wakeWord'
 
 describe('undo stack', () => {
   it('undoes in reverse order and reports the label', () => {
@@ -71,15 +71,44 @@ describe('voice modes', () => {
     expect(pttLatencyMs(NaN, 900)).toBeNull()
   })
 
+  it('requires explicit consent, an installed local engine, and OS permission before background listening', () => {
+    const base = { mode: 'wake-word' as const, consentGranted: true, engineAvailable: true, osPermissionGranted: true }
+    expect(canStartBackgroundListening({ ...base, consentGranted: false })).toBe(false)
+    expect(canStartBackgroundListening({ ...base, engineAvailable: false })).toBe(false)
+    expect(canStartBackgroundListening({ ...base, osPermissionGranted: false })).toBe(false)
+    expect(canStartBackgroundListening({ ...base, mode: 'push-to-talk' })).toBe(false)
+    expect(canStartBackgroundListening(base)).toBe(true)
+  })
+
   it('keeps the microphone closed until an explicit action outside wake-word mode', () => {
     expect(canOpenMicrophone('push-to-talk', false)).toBe(false)
     expect(canOpenMicrophone('manual', false)).toBe(false)
+    expect(canOpenMicrophone('wake-word', false)).toBe(false)
+    expect(canOpenMicrophone('wake-word', false, true)).toBe(true)
+    expect(canOpenMicrophone('wake-word', false, false)).toBe(false)
     expect(canOpenMicrophone('push-to-talk', true)).toBe(true)
     expect(canOpenMicrophone('manual', true)).toBe(true)
     expect(voiceModeNeedsBackgroundListening('wake-word')).toBe(true)
     expect(voiceModeNeedsBackgroundListening('push-to-talk')).toBe(false)
   })
 })
+
+
+  it('refuses to start a local engine unless every background-listening gate is satisfied', async () => {
+    let starts = 0
+    const engine = {
+      id: 'test-local', label: 'Test local', offline: true, available: true, reason: null,
+      start: async () => { starts += 1; return { ok: true, detail: 'started' } },
+      stop: () => {},
+    }
+    const base = { mode: 'wake-word' as const, consentGranted: true, osPermissionGranted: true }
+    expect((await startWakeWordEngineSafely(engine, { ...base, consentGranted: false }, () => {})).ok).toBe(false)
+    expect((await startWakeWordEngineSafely(engine, { ...base, osPermissionGranted: false }, () => {})).ok).toBe(false)
+    expect((await startWakeWordEngineSafely(engine, { ...base, mode: 'manual' }, () => {})).ok).toBe(false)
+    expect(starts).toBe(0)
+    expect((await startWakeWordEngineSafely(engine, base, () => {})).ok).toBe(true)
+    expect(starts).toBe(1)
+  })
 
 describe('wake word status', () => {
   it('is honest that no offline engine is installed', async () => {

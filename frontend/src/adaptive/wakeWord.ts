@@ -14,12 +14,12 @@ export interface WakeWordEngine {
 }
 
 export const WAKE_WORD_NOT_INSTALLED =
-  'Wake word engine not installed. BOZZ has no built-in offline wake-word model, so nothing is listening in the background.'
+  'No trained BOZZ classifier is bundled. Configure and validate a local model before manually starting the detector; the microphone stays off by default.'
 
 export const WAKE_WORD_OPTIONS = [
   'Use push-to-talk (works today, no extra download).',
   'Use the manual mic button, then say “BOZZ …” (browser speech service, not offline).',
-  'Install a local wake-word model such as openWakeWord or Porcupine with your own licence, then add an adapter that implements this interface.',
+  'Configure a trained local BOZZ classifier and its feature models, validate them in Settings, then manually start the consent-gated detector.',
 ]
 
 // Interface only. BOZZ ships no wake-word model, so this returns an honest
@@ -49,4 +49,26 @@ export function wakeWordStatus(): {
     detail: engine.available ? `${engine.label} is installed and runs offline.` : engine.reason ?? WAKE_WORD_NOT_INSTALLED,
     options: engine.available ? [] : [...WAKE_WORD_OPTIONS],
   }
+}
+
+
+export interface WakeWordStartGate {
+  mode: 'push-to-talk' | 'wake-word' | 'manual'
+  consentGranted: boolean
+  osPermissionGranted: boolean
+}
+
+/** Centralized guard used by every future local engine adapter. */
+export async function startWakeWordEngineSafely(
+  engine: WakeWordEngine,
+  gate: WakeWordStartGate,
+  onWake: () => void,
+): Promise<WakeWordStartResult> {
+  if (!engine.available) {
+    return { ok: false, detail: engine.reason ?? WAKE_WORD_NOT_INSTALLED }
+  }
+  if (gate.mode !== 'wake-word' || !gate.consentGranted || !gate.osPermissionGranted) {
+    return { ok: false, detail: 'Background listening is blocked until wake-word mode, explicit consent, and OS microphone permission are all enabled.' }
+  }
+  return engine.start(onWake)
 }

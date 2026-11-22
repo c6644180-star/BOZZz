@@ -36,6 +36,7 @@ export const STEP_STATUS_LABELS: Record<AgentStepStatus, string> = {
   failed: 'Failed',
   skipped: 'Skipped',
   cancelled: 'Cancelled',
+  interrupted: 'Interrupted — inspect the target app',
 }
 
 export const RESULT_LEVEL_LABELS: Record<AgentResultLevel, string> = {
@@ -44,6 +45,7 @@ export const RESULT_LEVEL_LABELS: Record<AgentResultLevel, string> = {
   accepted: 'Accepted',
   completed: 'Completed',
   verified: 'Verified',
+  unknown: 'Outcome unknown',
 }
 
 const RESULT_LEVEL_RANK: Record<AgentResultLevel, number> = {
@@ -52,6 +54,7 @@ const RESULT_LEVEL_RANK: Record<AgentResultLevel, number> = {
   accepted: 2,
   completed: 3,
   verified: 4,
+  unknown: -1,
 }
 
 export function isTerminalState(state: AgentState): boolean {
@@ -156,7 +159,7 @@ export function stepTarget(step: AgentStep, task: AgentTask): string {
 
 export function reportTone(status: string | null | undefined): 'success' | 'warning' | 'error' | 'info' {
   if (status === 'Done') return 'success'
-  if (status === 'Executed, not verified' || status === 'Dry run') return 'warning'
+  if (status === 'Executed, not verified' || status === 'Dry run' || status === 'Interrupted') return 'warning'
   if (status === 'Blocked' || status === 'Could not confirm' || status === 'Could not plan') return 'error'
   return 'info'
 }

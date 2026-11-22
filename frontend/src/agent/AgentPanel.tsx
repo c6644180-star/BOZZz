@@ -152,6 +152,7 @@ export function AgentPanel() {
     watch,
     refresh,
     setEnabled,
+    patchSettings,
     resetEmergency,
     startTask,
     selectTask,
@@ -509,6 +510,32 @@ export function AgentPanel() {
             </section>
           )}
 
+          {Boolean(task.action_journal?.length) && (
+            <section className="agent-section" aria-label="Durable action journal">
+              <div className="agent-section-head">
+                <h3><ClipboardList /> Durable action journal</h3>
+                <span className="agent-chip">{task.action_journal?.length ?? 0} action(s)</span>
+              </div>
+              <ul className="agent-action-journal">
+                {task.action_journal?.map((entry) => (
+                  <li key={entry.id} className={`is-${entry.state}`}>
+                    <div>
+                      <strong>{entry.action_type}</strong>
+                      <span>{entry.state === 'unknown' ? 'Outcome unknown' : entry.state}</span>
+                    </div>
+                    <small>Step {entry.step_id} · attempt {entry.attempt} · {formatTime(entry.started_at)}</small>
+                    {typeof entry.result?.detail === 'string' && <p>{entry.result.detail}</p>}
+                    {entry.state === 'unknown' && (
+                      <p className="agent-action-journal__warning">
+                        The backend restarted while this action was in flight. Inspect the target app; BOZZ will not replay it.
+                      </p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           {task.report && (
             <section className={`agent-report tone-${reportTone(task.report.status)}`} aria-label="Task report">
               <div className="agent-section-head">
@@ -572,6 +599,42 @@ export function AgentPanel() {
             ))}
           </ul>
         )}
+      </section>
+
+      <section className="agent-section" aria-label="Adapter permission scopes">
+        <h3><ShieldCheck /> Adapter permission scopes</h3>
+        <label className={`agent-toggle ${status?.adapters.files.available ? '' : 'is-disabled'}`}>
+          <span>
+            Browser file transfers
+            <small>
+              {status?.adapters.files.detail ?? 'Browser adapter status is unavailable.'}
+              {' '}Each download or upload still requires its own plan and step approval.
+            </small>
+          </span>
+          <input
+            type="checkbox"
+            checked={settings?.file_access_enabled === true}
+            onChange={(event) => {
+              const enabled = event.target.checked
+              if (enabled && !window.confirm(
+                'Allow BOZZ browser tasks to download or upload files? Each file action will still require a separate step approval.',
+              )) return
+              void patchSettings({ file_access_enabled: enabled }, enabled)
+            }}
+            disabled={!status?.adapters.files.available || busy !== null || active}
+          />
+        </label>
+        <div className="agent-scope-unavailable">
+          <strong>App control</strong>
+          <small>{status?.adapters.apps.detail ?? 'No app adapter is available yet. App actions remain blocked.'}</small>
+        </div>
+        <div className="agent-scope-unavailable">
+          <strong>Device / HID control</strong>
+          <small>{status?.adapters.devices.detail ?? 'No device adapter is available yet. Device actions remain blocked.'}</small>
+        </div>
+        <p className="agent-note">
+          These are separate master permissions. Turning one on never skips the task-plan approval or per-action approval gates.
+        </p>
       </section>
 
       <section className="agent-section">

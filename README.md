@@ -28,16 +28,25 @@ Current verified state: **2026-11-09**. Backend suite: **108 tests passing (1 sk
 
 Vision analysis, hardware adapters, user accounts/authentication, packaged Electron distribution, and the BOZZ Firm, Society, and Market Analyzer modules are **planned or preview-only**. Gesture accuracy has not been benchmarked on target hardware, and desktop control still needs a manual Notepad/hotkey test on your machine. The UI labels unavailable services instead of faking them. See [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) for the exact status of every area.
 
+
+## Final wake-word model pipeline and updates
+
+Gate 14 is the final planned development gate for the current wake-word foundation. It adds a local training preflight and openWakeWord-compatible configuration generator; it does not train or ship a BOZZ classifier. A real model still requires permission-cleared local training assets, an explicit training run, held-out evaluation, artifact validation, and user-approved activation. See [Gate 14 training guide](docs/WAKE-WORD-TRAINING.md).
+
+After the integration PRs are merged into `main`, update an existing Windows checkout with `UPDATE_BOZZ.bat`. It requires a clean Git working tree, fast-forwards from `origin/main`, and refreshes Python/npm dependencies without running destructive reset/clean commands. See [Windows update instructions](docs/WINDOWS-UPDATE.md). Then launch with `START_BOZZ.bat`.
+
+**Scope note:** “Final gate” means the final gate in this implementation sequence, not that every part of the broader BOZZ vision is production-complete. The BOZZ Firm, Society, Market Analyzer, hardware integrations, packaged installer, and other future modules remain subject to the status documented in [PROJECT_STATUS.md](docs/PROJECT_STATUS.md).
+
 ## Requirements
 
 - Windows 10/11 (tested on Windows 10, Intel i3, 8 GB RAM class hardware)
 - Python 3.13 (3.13.15 verified) with `pip`
-- Node.js 24 and npm
+- Node.js 22.12+ (or 20.19+) and npm
 - Ollama is optional. Without it, chat reports an unavailable provider; the workspace workflow still runs.
 
 ## Run BOZZ on Windows
 
-**One-file launcher:** double-click `START_BOZZ.bat` in the repository root. It checks the expected folders, Python 3.13, Node.js 24+, creates the root `.venv`, installs backend dependencies and (when needed) locked frontend dependencies, starts the FastAPI and Vite servers, checks their local health endpoints, and launches the Electron development shell. It does not delete project data or download an AI model. Ollama remains optional and must be installed/configured separately for local-model chat.
+**One-file launcher:** double-click `START_BOZZ.bat` in the repository root. It checks the expected folders, Python 3.13, a Vite-compatible Node.js version (22.12+ or 20.19+), creates the root `.venv`, installs backend dependencies and (when needed) locked frontend dependencies, starts the FastAPI and Vite servers, checks their local health endpoints, and launches the Electron development shell. It does not delete project data or download an AI model. Ollama remains optional and must be installed/configured separately for local-model chat.
 
 The launcher opens separate terminal windows for the backend, frontend and Electron shell so startup errors remain visible. Close the Electron window to quit the desktop shell; stop the backend and frontend from their own terminal windows.
 

@@ -425,3 +425,53 @@
     height: 66px;
   }
 }
+
+.agent-action-journal {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agent-action-journal li {
+  display: grid;
+  gap: 4px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.agent-action-journal li > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.agent-action-journal strong {
+  color: var(--text);
+  font-size: 11px;
+}
+
+.agent-action-journal span,
+.agent-action-journal small {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.agent-action-journal p {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 10px;
+}
+
+.agent-action-journal li.is-unknown {
+  border-color: var(--warning, #c58b32);
+}
+
+.agent-action-journal__warning {
+  color: var(--warning, #c58b32) !important;
+  font-weight: 600;
+}

@@ -329,6 +329,14 @@ export function HgiProvider({ children }: { children: ReactNode }) {
       const engine = buildEngine()
       engineRef.current = engine
       await engine.start()
+      if (window.bozzDesktop) {
+        try {
+          const background = await window.bozzDesktop.setBackgroundActivity(true)
+          if (!background.ok) showNotice(background.reason ?? 'Background gesture processing could not be enabled.')
+        } catch {
+          showNotice('Gestures are active, but background processing could not be confirmed.')
+        }
+      }
       enabledRef.current = true
       setEnabled(true)
       setPreviewEpoch((value) => value + 1)
@@ -549,6 +557,9 @@ export function HgiProvider({ children }: { children: ReactNode }) {
     const engine = engineRef.current
     engineRef.current = null
     engine?.stop()
+    if (window.bozzDesktop) {
+      void window.bozzDesktop.setBackgroundActivity(false).catch(() => undefined)
+    }
     enabledRef.current = false
     setEnabled(false)
     setPaused(false)
@@ -564,6 +575,11 @@ export function HgiProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     stopLiveRef.current = stopLive
   }, [stopLive])
+
+  useEffect(() => {
+    const unsubscribe = window.bozzDesktop?.onStopCamera(() => stopLiveRef.current())
+    return () => unsubscribe?.()
+  }, [])
 
   const stopGestures = useCallback(
     (reason?: string) => {

@@ -28,6 +28,7 @@ export interface AgentStartOptions {
   dryRun?: boolean | null
   allowScreenshots?: boolean
   screenshotProvider?: string | null
+  idempotencyKey?: string
 }
 
 interface AgentContextValue {
@@ -70,6 +71,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
   const [busy, setBusy] = useState<string | null>(null)
   const [watching, setWatching] = useState(false)
   const taskRef = useRef<AgentTask | null>(null)
+  const pendingSubmissionRef = useRef<{ task: string; optionsHash: string; key: string } | null>(null)
 
   const setTask = useCallback((next: AgentTask | null) => {
     taskRef.current = next
@@ -186,13 +188,26 @@ export function AgentProvider({ children }: { children: ReactNode }) {
         setError('The agent is already running a task. Stop it before starting another.')
         return null
       }
-      return withBusy('start', async () => {
-        const created = await createAgentTask(trimmed, options)
-        taskRef.current = created
-        setTaskState(created)
-        if (isTerminalState(created.state)) void refresh()
-        return created
+      const optionsHash = JSON.stringify({
+        dryRun: options.dryRun ?? null,
+        allowScreenshots: options.allowScreenshots === true,
+        screenshotProvider: options.screenshotProvider ?? null,
       })
+      const pending = pendingSubmissionRef.current
+      const idempotencyKey = options.idempotencyKey
+        ?? (pending && pending.task === trimmed && pending.optionsHash === optionsHash
+          ? pending.key
+          : crypto.randomUUID())
+      pendingSubmissionRef.current = { task: trimmed, optionsHash, key: idempotencyKey }
+      const created = await withBusy('start', async () => {
+        const value = await createAgentTask(trimmed, { ...options, idempotencyKey })
+        taskRef.current = value
+        setTaskState(value)
+        if (isTerminalState(value.state)) void refresh()
+        return value
+      })
+      if (created) pendingSubmissionRef.current = null
+      return created
     },
     [refresh, withBusy],
   )

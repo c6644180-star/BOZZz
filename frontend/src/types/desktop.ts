@@ -60,10 +60,29 @@ export type MiniAction =
   | { type: 'ptt-start' }
   | { type: 'ptt-end' }
 
+export type DesktopAppId = 'calculator' | 'notepad' | 'paint'
+
+export interface DesktopLaunchResult { ok: boolean; appId?: DesktopAppId; reason?: string }
+
+export interface ManagedDesktopWindow { id: 'main' | 'mini'; title: string; visible: boolean; focused: boolean; minimized: boolean }
+export interface ManagedWindowFocusResult { ok: boolean; id?: 'main' | 'mini'; reason?: string }
+export type ExternalDesktopAppId = 'notepad' | 'paint' | 'calculator' | 'edge' | 'chrome' | 'vscode'
+export interface ExternalDesktopWindow { id: string; appId: ExternalDesktopAppId; appName: string }
+export interface ExternalWindowListResult { ok: boolean; windows: ExternalDesktopWindow[]; reason?: string }
+export interface ExternalWindowFocusResult { ok: boolean; appId?: ExternalDesktopAppId; appName?: string; reason?: string }
+
 export interface DesktopBridge {
   isDesktop: true
   setMode: (mode: MiniMode) => void
   getMode: () => Promise<MiniMode>
+  setBackgroundActivity: (active: boolean) => Promise<{ ok: boolean; backgroundActive?: boolean; reason?: string }>
+  setWakeWordActivity: (active: boolean) => Promise<{ ok: boolean; backgroundActive?: boolean; reason?: string }>
+  showMain: () => Promise<{ ok: boolean; reason?: string }>
+  launchApp: (appId: DesktopAppId) => Promise<DesktopLaunchResult>
+  listManagedWindows: () => Promise<ManagedDesktopWindow[]>
+  focusManagedWindow: (id: 'main' | 'mini') => Promise<ManagedWindowFocusResult>
+  listExternalWindows: () => Promise<ExternalWindowListResult>
+  focusExternalWindow: (id: string) => Promise<ExternalWindowFocusResult>
   openFull: () => void
   quit: () => void
   publishMiniState: (state: MiniState) => void
@@ -74,6 +93,8 @@ export interface DesktopBridge {
   onMiniPause: (listener: (pause: MiniPause) => void) => () => void
   onMiniMode: (listener: (mode: { mode: MiniMode }) => void) => () => void
   onMiniAction: (listener: (action: MiniAction) => void) => () => void
+  onStopCamera: (listener: () => void) => () => void
+  onStopWakeWord: (listener: () => void) => () => void
 }
 
 declare global {

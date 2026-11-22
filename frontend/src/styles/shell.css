@@ -1910,3 +1910,23 @@
   color: var(--danger) !important;
   font-size: 10px;
 }
+
+.agent-scope-unavailable {
+  display: grid;
+  gap: 3px;
+  padding: 9px 10px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface-solid) 42%, transparent);
+}
+
+.agent-scope-unavailable strong {
+  color: var(--text-soft);
+  font-size: 11px;
+}
+
+.agent-scope-unavailable small {
+  color: var(--text-faint);
+  font-size: 10px;
+  line-height: 1.45;
+}

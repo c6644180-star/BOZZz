@@ -326,6 +326,9 @@ class AgentSettings:
     approval_mode: str = "every_step"
     ask_new_domain: bool = True
     screenshot_to_provider: bool = False
+    file_access_enabled: bool = False
+    app_control_enabled: bool = False
+    device_control_enabled: bool = False
     dry_run: bool = True
     max_steps: int = 25
     max_seconds: int = 300
@@ -349,6 +352,9 @@ class AgentSettings:
             "approval_mode": self.approval_mode,
             "ask_new_domain": self.ask_new_domain,
             "screenshot_to_provider": self.screenshot_to_provider,
+            "file_access_enabled": self.file_access_enabled,
+            "app_control_enabled": self.app_control_enabled,
+            "device_control_enabled": self.device_control_enabled,
             "dry_run": self.dry_run,
             "max_steps": self.max_steps,
             "max_seconds": self.max_seconds,

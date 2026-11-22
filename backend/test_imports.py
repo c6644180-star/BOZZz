@@ -14,6 +14,7 @@ if str(BACKEND_DIR) not in sys.path:
 from app.api.identities import router as identities_router  # noqa: E402
 from app.api.bids import router as bids_router  # noqa: E402
 from app.api.preferences import router as preferences_router  # noqa: E402
+from app.api.voice import router as voice_router  # noqa: E402
 
 
 def main() -> None:
@@ -21,6 +22,7 @@ def main() -> None:
         "identities": identities_router,
         "bids": bids_router,
         "preferences": preferences_router,
+        "voice": voice_router,
     }
     for name, router in routers.items():
         if not router.routes:

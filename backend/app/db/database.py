@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Iterator
 import sqlite3
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 7
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS schema_meta (
@@ -149,6 +149,16 @@ CREATE TABLE IF NOT EXISTS agent_tasks (
 
 CREATE INDEX IF NOT EXISTS idx_agent_tasks_created ON agent_tasks(created_at DESC);
 
+-- A stable client key maps one logical task submission to exactly one task.
+-- The request hash prevents accidental key reuse for a different payload.
+CREATE TABLE IF NOT EXISTS agent_idempotency (
+    idempotency_key TEXT PRIMARY KEY,
+    request_hash TEXT NOT NULL,
+    task_id TEXT NOT NULL UNIQUE REFERENCES agent_tasks(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS identities (
     id TEXT PRIMARY KEY,
     owner_id TEXT NOT NULL,
@@ -243,6 +253,25 @@ CREATE TABLE IF NOT EXISTS agent_steps (
 );
 
 CREATE INDEX IF NOT EXISTS idx_agent_steps_task ON agent_steps(task_id, id);
+
+-- Durable record written immediately before an adapter side effect.
+-- A row left in "started" after a crash is converted to "unknown" and is never replayed.
+CREATE TABLE IF NOT EXISTS agent_action_journal (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id TEXT NOT NULL REFERENCES agent_tasks(id) ON DELETE CASCADE,
+    step_id TEXT NOT NULL,
+    attempt INTEGER NOT NULL,
+    action_type TEXT NOT NULL,
+    action_fingerprint TEXT NOT NULL,
+    state TEXT NOT NULL CHECK(state IN ('started', 'completed', 'failed', 'unknown')),
+    result_json TEXT,
+    started_at TEXT NOT NULL,
+    finished_at TEXT,
+    UNIQUE(task_id, step_id, attempt)
+);
+
+CREATE INDEX IF NOT EXISTS idx_agent_action_journal_task
+    ON agent_action_journal(task_id, id);
 """
 
 

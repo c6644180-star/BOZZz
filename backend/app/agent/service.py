@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any, Callable
 import hashlib
 import json
+import re
 import secrets
 import threading
 import time
@@ -40,7 +41,7 @@ from app.agent.schemas import (
     PlanStep,
 )
 from app.agent.simulated import SimulatedAdapter
-from app.agent.store import AgentStore
+from app.agent.store import AgentIdempotencyConflict as StoreIdempotencyConflict, AgentStore
 from app.core.config import Settings
 from app.core.logging import configure_logging
 from app.db.database import Database
@@ -64,6 +65,10 @@ class AgentNotFound(AgentError):
 
 
 class AgentApprovalError(AgentError):
+    pass
+
+
+class AgentIdempotencyConflict(AgentError):
     pass
 
 
@@ -141,6 +146,9 @@ class AgentService:
         self._planner = TaskPlanner(self.policy, provider)
         self._adapter_factory = adapter_factory
         self._logger = configure_logging(settings.log_level).getChild("agent")
+        recovered = self._store.recover_interrupted_tasks(_iso_now())
+        if recovered:
+            self._logger.warning("marked %d unfinished agent task(s) interrupted after backend restart; none were resumed", recovered)
         self._lock = threading.RLock()
         self._condition = threading.Condition(self._lock)
         self._tasks: dict[str, _Task] = {}
@@ -164,6 +172,9 @@ class AgentService:
             approval_mode=str(defaults.get("approval_mode") or "every_step"),
             ask_new_domain=bool(defaults.get("ask_new_domain", True)),
             screenshot_to_provider=bool(defaults.get("screenshot_to_provider", False)),
+            file_access_enabled=bool(defaults.get("file_access_enabled", False)),
+            app_control_enabled=bool(defaults.get("app_control_enabled", False)),
+            device_control_enabled=bool(defaults.get("device_control_enabled", False)),
             dry_run=bool(defaults.get("dry_run", True)),
             max_steps=int(defaults.get("max_steps") or 25),
             max_seconds=int(defaults.get("max_seconds") or 300),
@@ -188,6 +199,9 @@ class AgentService:
                 approval_mode=str(payload.get("approval_mode") or base.approval_mode),
                 ask_new_domain=bool(payload.get("ask_new_domain", base.ask_new_domain)),
                 screenshot_to_provider=bool(payload.get("screenshot_to_provider", base.screenshot_to_provider)),
+                file_access_enabled=bool(payload.get("file_access_enabled", base.file_access_enabled)),
+                app_control_enabled=bool(payload.get("app_control_enabled", base.app_control_enabled)),
+                device_control_enabled=bool(payload.get("device_control_enabled", base.device_control_enabled)),
                 dry_run=bool(payload.get("dry_run", base.dry_run)),
                 max_steps=int(payload.get("max_steps") or base.max_steps),
                 max_seconds=int(payload.get("max_seconds") or base.max_seconds),
@@ -225,6 +239,15 @@ class AgentService:
                 enabled = requested
                 if not requested:
                     self._stop_all_locked("the agent switch was turned off")
+            file_access_enabled = bool(patch.get("file_access_enabled", current.file_access_enabled))
+            app_control_enabled = bool(patch.get("app_control_enabled", current.app_control_enabled))
+            device_control_enabled = bool(patch.get("device_control_enabled", current.device_control_enabled))
+            if file_access_enabled and not current.file_access_enabled and not confirm:
+                raise AgentError("Enabling browser file transfers needs an explicit confirmation.")
+            if app_control_enabled:
+                raise AgentError("App control is unavailable because no app adapter is installed in this build.")
+            if device_control_enabled:
+                raise AgentError("Device control is unavailable because no device adapter is installed in this build.")
             approval_mode = str(patch.get("approval_mode", current.approval_mode))
             domains = current.domains
             if "domains" in patch:
@@ -248,6 +271,9 @@ class AgentService:
                 screenshot_to_provider=bool(
                     patch.get("screenshot_to_provider", current.screenshot_to_provider)
                 ),
+                file_access_enabled=file_access_enabled,
+                app_control_enabled=app_control_enabled,
+                device_control_enabled=device_control_enabled,
                 dry_run=bool(patch.get("dry_run", current.dry_run)),
                 max_steps=int(patch.get("max_steps", current.max_steps)),
                 max_seconds=int(patch.get("max_seconds", current.max_seconds)),
@@ -319,6 +345,12 @@ class AgentService:
                             else "Playwright is not installed. Run: pip install playwright && python -m playwright install chromium"
                         ),
                     },
+                    "files": {
+                        "available": browser_installed,
+                        "detail": "Browser download/upload only; file scope and per-step approval are both required.",
+                    },
+                    "apps": {"available": False, "detail": "No app-control adapter is installed in this build."},
+                    "devices": {"available": False, "detail": "No HID/device adapter is installed in this build."},
                     "official_api": {"available": False, "detail": "Documented stub; no provider in this milestone."},
                     "accessibility": {
                         "available": False,
@@ -353,26 +385,81 @@ class AgentService:
         dry_run: bool | None = None,
         allow_screenshots: bool = False,
         screenshot_provider: str | None = None,
+        idempotency_key: str | None = None,
     ) -> dict[str, Any]:
+        clean_task = task.strip()
+        if not clean_task:
+            raise AgentError("The task cannot be empty.")
         with self._lock:
+            settings = self._settings
+            use_dry_run = settings.dry_run if dry_run is None else bool(dry_run)
+            clean_provider = (screenshot_provider or "").strip() or None
+            key = (idempotency_key or uuid.uuid4().hex).strip()
+            if not re.fullmatch(r"[A-Za-z0-9._:-]{16,128}", key):
+                raise AgentError("The idempotency key must contain 16–128 safe characters.")
+            request_payload = {
+                "task": clean_task,
+                "dry_run": use_dry_run,
+                "allow_screenshots": bool(allow_screenshots),
+                "screenshot_provider": clean_provider,
+            }
+            request_hash = hashlib.sha256(
+                json.dumps(request_payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
+            ).hexdigest()
+            try:
+                existing_id = self._store.get_idempotency(key, request_hash)
+            except StoreIdempotencyConflict as exc:
+                raise AgentIdempotencyConflict(str(exc)) from exc
+            if existing_id:
+                existing = self._tasks.get(existing_id)
+                if existing is not None:
+                    return self._task_view(existing)
+                stored = self._store.get_task(existing_id)
+                if stored is not None:
+                    return self.task(existing_id)
+                raise AgentError("The idempotency record exists but its task record is missing; no task was replayed.")
+
+            # A duplicate request is returned above even if the agent has since
+            # been switched off. New work still requires the explicit enable gate.
             if not self._enabled:
                 raise AgentDisabled("The computer agent is off. Turn it on in Settings before starting a task.")
             if self._emergency_stopped:
                 raise AgentDisabled("Emergency stop is latched. Reset it before starting a task.")
-            settings = self._settings
             if allow_screenshots:
                 if not settings.screenshot_to_provider:
                     raise AgentError("Screenshot sharing is off in Settings; this task cannot enable it.")
-                if not (screenshot_provider or "").strip():
+                if not clean_provider:
                     raise AgentError("Name the AI provider before enabling screenshots for a task.")
-            use_dry_run = settings.dry_run if dry_run is None else bool(dry_run)
+
             provider_name = getattr(self._provider, "provider_name", None) if self._provider else None
             model_name = getattr(self._provider, "configured_model", None) if self._provider else None
             task_id = uuid.uuid4().hex
             created = _iso_now()
+            try:
+                reserved_id, is_new = self._store.reserve_task(
+                    idempotency_key=key,
+                    request_hash=request_hash,
+                    task_id=task_id,
+                    task=clean_task,
+                    dry_run=use_dry_run,
+                    provider=provider_name or "deterministic",
+                    model=model_name or "demo-planner",
+                    created_at=created,
+                )
+            except StoreIdempotencyConflict as exc:
+                raise AgentIdempotencyConflict(str(exc)) from exc
+            if not is_new:
+                existing = self._tasks.get(reserved_id)
+                if existing is not None:
+                    return self._task_view(existing)
+                stored = self._store.get_task(reserved_id)
+                if stored is not None:
+                    return self.task(reserved_id)
+                raise AgentError("The idempotent task reservation could not be recovered; no task was replayed.")
+
             record = _Task(
                 id=task_id,
-                task=task.strip(),
+                task=clean_task,
                 settings=settings,
                 dry_run=use_dry_run,
                 plan=None,
@@ -383,7 +470,7 @@ class AgentService:
                 provider=provider_name or "deterministic",
                 model=model_name or "demo-planner",
                 screenshots_allowed=bool(allow_screenshots),
-                screenshot_provider=(screenshot_provider or "").strip() or None,
+                screenshot_provider=clean_provider,
             )
             self._tasks[task_id] = record
             self._audit(
@@ -584,8 +671,21 @@ class AgentService:
         if stored is None:
             raise AgentNotFound(f"Agent task '{task_id}' was not found.")
         stored["pending_approval"] = None
+        stored["action_journal"] = self._store.list_action_journal(task_id)
         stored["injection_warnings"] = []
         stored["notes"] = []
+        stored.setdefault("started_at", None)
+        stored.setdefault("finished_at", None)
+        stored.setdefault("elapsed_ms", 0)
+        stored.setdefault("current_step_id", None)
+        stored.setdefault("paused", False)
+        stored.setdefault("handoff", False)
+        stored.setdefault("screenshots_allowed", False)
+        stored.setdefault("screenshot_provider", None)
+        stored.setdefault("current_application", (
+            next((step.get("application") for step in stored.get("steps", []) if step.get("application")), None)
+            or "Browser"
+        ))
         return stored
 
     def tasks(self, limit: int = 20) -> list[dict[str, Any]]:
@@ -767,6 +867,51 @@ class AgentService:
             self._audit(record, "block", "blocked", f"{decision.label}: {decision.reason}"[:400], step)
             self._store.save_task(record.to_store())
             return False
+        permission_scope = self._required_permission_scope(step.action.type)
+        if permission_scope and not getattr(record.settings, permission_scope, False):
+            scope_label = {
+                "file_access_enabled": "File access",
+                "app_control_enabled": "App control",
+                "device_control_enabled": "Device control",
+            }[permission_scope]
+            reason = f"{scope_label} permission is off. Enable the scope in Agent Settings before approving this action."
+            state["status"] = "blocked"
+            state["level"] = "none"
+            state["detail"] = reason
+            record.state = "stopped"
+            record.report = self._report(
+                record, "Blocked", f"Step '{step.goal}' was blocked: {reason}", "none", [],
+                time.monotonic() - started,
+            )
+            self._audit(record, "permission_scope", "blocked", reason, step)
+            self._store.save_task(record.to_store())
+            return False
+        if permission_scope == "app_control_enabled":
+            reason = "No app-control adapter is installed in this build; no app action was run."
+            state["status"] = "blocked"
+            state["level"] = "none"
+            state["detail"] = reason
+            record.state = "stopped"
+            record.report = self._report(
+                record, "Blocked", f"Step '{step.goal}' was blocked: {reason}", "none", [],
+                time.monotonic() - started,
+            )
+            self._audit(record, "adapter_unavailable", "blocked", reason, step)
+            self._store.save_task(record.to_store())
+            return False
+        if permission_scope == "device_control_enabled":
+            reason = "No HID/device adapter is installed in this build; no device action was run."
+            state["status"] = "blocked"
+            state["level"] = "none"
+            state["detail"] = reason
+            record.state = "stopped"
+            record.report = self._report(
+                record, "Blocked", f"Step '{step.goal}' was blocked: {reason}", "none", [],
+                time.monotonic() - started,
+            )
+            self._audit(record, "adapter_unavailable", "blocked", reason, step)
+            self._store.save_task(record.to_store())
+            return False
         if decision.handoff:
             self._handoff(record, decision.reason)
             if not self._wait_if_paused(record):
@@ -815,8 +960,32 @@ class AgentService:
                 )
                 self._store.save_task(record.to_store())
                 return False
-        # Execute only after the policy and the approval gate.
-        result = adapter.act(step.action)
+        # Journal the exact action before calling the adapter. A crash between
+        # this write and the result write becomes "unknown" and is never replayed.
+        journal_id = self._store.begin_action(
+            task_id=record.id,
+            step_id=step.id,
+            attempt=1,
+            action_type=step.action.type,
+            action_fingerprint=self._action_fingerprint(step),
+            started_at=_iso_now(),
+        )
+        try:
+            result = adapter.act(step.action)
+        except Exception as exc:
+            self._store.finish_action(
+                journal_id,
+                state="failed",
+                result={"action_id": step.action.type, "error": str(exc)[:500]},
+                finished_at=_iso_now(),
+            )
+            raise
+        self._store.finish_action(
+            journal_id,
+            state="completed" if result.ok else "failed",
+            result=result.to_dict(),
+            finished_at=_iso_now(),
+        )
         state["method"] = result.method
         state["level"] = result.level
         state["detail"] = result.detail
@@ -829,27 +998,19 @@ class AgentService:
             step,
         )
         if not result.ok:
-            retryable = step.action.type in ("browser.type", "browser.click_link", "browser.open", "browser.scroll")
-            if retryable:
-                record.notes.append(f"Step '{step.id}' failed once; re-inspecting and retrying once.")
-                adapter.observe()
-                result = adapter.act(step.action)
-                state["detail"] = result.detail
-                state["level"] = result.level
-            if not result.ok:
-                state["status"] = "failed"
-                record.state = "failed"
-                record.report = self._report(
-                    record,
-                    "Could not confirm",
-                    f"Step '{step.goal}' failed: {result.detail}",
-                    "attempted",
-                    [],
-                    time.monotonic() - started,
-                )
-                self._audit(record, "action_failed", "failed", result.detail[:400], step)
-                self._store.save_task(record.to_store())
-                return False
+            state["status"] = "failed"
+            record.state = "failed"
+            record.report = self._report(
+                record,
+                "Could not confirm",
+                f"Step '{step.goal}' failed: {result.detail}",
+                "attempted",
+                [],
+                time.monotonic() - started,
+            )
+            self._audit(record, "action_failed", "failed", result.detail[:400], step)
+            self._store.save_task(record.to_store())
+            return False
         record.state = "verifying"
         verification = step.verify
         if verification is None and step.action.type == "browser.verify":
@@ -1111,6 +1272,26 @@ class AgentService:
             "finished_at": None,
         }
 
+    @staticmethod
+    def _required_permission_scope(action_type: str) -> str | None:
+        if action_type in {"browser.download", "browser.upload"} or action_type.startswith("file."):
+            return "file_access_enabled"
+        if action_type.startswith(("app.", "system.")):
+            return "app_control_enabled"
+        if action_type.startswith(("device.", "hid.", "usb.", "bluetooth.", "serial.")):
+            return "device_control_enabled"
+        return None
+
+    @staticmethod
+    def _required_permission_scope(action_type: str) -> str | None:
+        if action_type in {"browser.download", "browser.upload"} or action_type.startswith("file."):
+            return "file_access_enabled"
+        if action_type.startswith(("app.", "system.")):
+            return "app_control_enabled"
+        if action_type.startswith(("device.", "hid.", "usb.", "bluetooth.", "serial.")):
+            return "device_control_enabled"
+        return None
+
     def _task_view(self, record: _Task) -> dict[str, Any]:
         elapsed = record.elapsed_ms
         if record.started_monotonic and not record.finished_at:
@@ -1160,6 +1341,7 @@ class AgentService:
                 )
                 or (record.steps[0]["application"] if record.steps else "Browser")
             ),
+            "action_journal": self._store.list_action_journal(record.id),
         }
 
     def _report(

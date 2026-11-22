@@ -13,7 +13,7 @@ export type AgentState =
   | 'stopped'
   | 'cancelled'
 
-export type AgentResultLevel = 'attempted' | 'accepted' | 'completed' | 'verified' | 'none'
+export type AgentResultLevel = 'attempted' | 'accepted' | 'completed' | 'verified' | 'none' | 'unknown'
 
 export type AgentStepStatus =
   | 'pending'
@@ -26,12 +26,16 @@ export type AgentStepStatus =
   | 'failed'
   | 'skipped'
   | 'cancelled'
+  | 'interrupted'
 
 export interface AgentSettings {
   enabled: boolean
   approval_mode: AgentApprovalMode
   ask_new_domain: boolean
   screenshot_to_provider: boolean
+  file_access_enabled: boolean
+  app_control_enabled: boolean
+  device_control_enabled: boolean
   dry_run: boolean
   max_steps: number
   max_seconds: number
@@ -74,6 +78,9 @@ export interface AgentAdapters {
   official_api: AgentAdapterInfo
   accessibility: AgentAdapterInfo
   desktop: AgentAdapterInfo
+  files: AgentAdapterInfo
+  apps: AgentAdapterInfo
+  devices: AgentAdapterInfo
 }
 
 export interface AgentCapabilityProfile {
@@ -239,6 +246,18 @@ export interface AgentTaskSummary {
   updated_at: string
 }
 
+export interface AgentActionJournalEntry {
+  id: number
+  step_id: string
+  attempt: number
+  action_type: string
+  action_fingerprint: string
+  state: 'started' | 'completed' | 'failed' | 'unknown'
+  result: Record<string, unknown> | null
+  started_at: string
+  finished_at: string | null
+}
+
 export interface AgentTask extends AgentTaskSummary {
   plan: AgentPlan | null
   steps: AgentStep[]
@@ -255,6 +274,7 @@ export interface AgentTask extends AgentTaskSummary {
   screenshots_allowed: boolean
   screenshot_provider: string | null
   current_application: string
+  action_journal?: AgentActionJournalEntry[]
 }
 
 export interface AgentStatus {

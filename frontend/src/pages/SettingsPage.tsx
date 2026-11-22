@@ -10,6 +10,10 @@ import { probeBackend } from '../services/backend'
 import { VOICE_MODE_COPY } from '../adaptive/voice'
 import { WAKE_WORD_NOT_INSTALLED } from '../adaptive/wakeWord'
 import { ReliabilitySettings } from '../components/settings/ReliabilitySettings'
+import { DesktopAppLauncher } from '../components/settings/DesktopAppLauncher'
+import { ManagedWindowPanel } from '../components/settings/ManagedWindowPanel'
+import { ExternalApplicationPanel } from '../components/settings/ExternalApplicationPanel'
+import { WakeWordDiagnostics } from '../components/settings/WakeWordDiagnostics'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { ConnStatus, VoiceMode } from '../types/bozz'
@@ -18,13 +22,32 @@ export default function SettingsPage() {
   const { settings, updateSettings, tts, mic, ai } = useBozzVoice()
   const hgi = useHgi()
   const [backend, setBackend] = useState<ConnStatus>('checking')
+  const [nativePrivacy, setNativePrivacy] = useState<{ platform: string; microphone: string; camera: string; available: boolean } | null>(null)
   useEffect(() => {
     let alive = true
     void probeBackend().then((s) => { if (alive) setBackend(s) })
     return () => { alive = false }
   }, [])
 
+  useEffect(() => {
+    let alive = true
+    const desktop = (window as Window & { bozzDesktop?: { getMediaAccessStatus?: () => Promise<{ platform: string; microphone: string; camera: string; available: boolean }> } }).bozzDesktop
+    if (desktop?.getMediaAccessStatus) {
+      void desktop.getMediaAccessStatus().then((status) => { if (alive) setNativePrivacy(status) }).catch(() => {
+        if (alive) setNativePrivacy({ platform: 'desktop', microphone: 'unknown', camera: 'unknown', available: false })
+      })
+    }
+    return () => { alive = false }
+  }, [])
+
   const cameraSupported = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia
+  const privacyLabel = (status: string) => ({
+    granted: 'granted by OS',
+    denied: 'denied by OS',
+    restricted: 'restricted by OS',
+    'not-determined': 'not yet decided by OS',
+    unknown: 'unknown / not exposed by this platform',
+  }[status] ?? 'unknown / not exposed by this platform')
 
   return (
     <ModulePage title="Settings" subtitle="Preferences are stored on this device. Every status below reflects a real capability check." tone="live">
@@ -67,6 +90,17 @@ export default function SettingsPage() {
             ))}
           </select>
         </label>
+        <label className="toggle-row">
+          <span>
+            Allow future background listening
+            <small>Allows the separately validated local “BOZZ” detector to be started manually below. This preference never starts the microphone by itself; use the explicit Start button and OS permission prompt.</small>
+          </span>
+          <input
+            type="checkbox"
+            checked={settings.backgroundListeningConsent}
+            onChange={(e) => updateSettings({ backgroundListeningConsent: e.target.checked })}
+          />
+        </label>
         {settings.voiceMode === 'wake-word' && (
           <p className="settings-note">{WAKE_WORD_NOT_INSTALLED} Background listening is unavailable; BOZZ keeps the microphone closed and uses push-to-talk instead.</p>
         )}
@@ -86,10 +120,18 @@ export default function SettingsPage() {
         </section>
         <FileAccessSettings />
         <MessageSettings />
+        <DesktopAppLauncher />
+        <ManagedWindowPanel />
+        <ExternalApplicationPanel />
+        <WakeWordDiagnostics />
         <div className="status-rows">
           <p><strong>Backend (/api/health):</strong> {backend === 'online' ? 'online' : backend === 'checking' ? 'checking…' : 'offline — no backend connection'}</p>
           <p><strong>Local AI:</strong> {ai.available ? `${ai.provider} · ${ai.configuredModel}` : `unavailable — ${ai.detail ?? 'checking…'}`}</p>
           <p><strong>Speech output:</strong> {tts.available ? 'available in this browser' : 'not supported in this browser'}</p>
+          <p><strong>Command microphone:</strong> {mic.listening ? 'ACTIVE — speech input is listening' : 'OFF — no speech command is being recorded'} (wake-word detector status is shown separately above)</p>
+          {nativePrivacy?.available && <p><strong>Windows/macOS microphone permission:</strong> {privacyLabel(nativePrivacy.microphone)}</p>}
+          {nativePrivacy?.available && <p><strong>Windows/macOS camera permission:</strong> {privacyLabel(nativePrivacy.camera)}</p>}
+          {nativePrivacy && !nativePrivacy.available && <p><strong>Native OS privacy status:</strong> unavailable on this platform; use the operating system privacy settings to review access.</p>}
           <p><strong>Voice input:</strong> {mic.available ? 'available in this browser' : `not supported${mic.reason ? ` (${mic.reason})` : ''}`}</p>
           <p><strong>Camera:</strong> {cameraSupported ? 'supported — only active after you grant permission in Gesture Lab' : 'not available in this browser'}</p>
           <p>

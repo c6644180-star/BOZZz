@@ -96,11 +96,17 @@ A BID (BOZZ Idea ID) preserves the user's original idea and tracks its evolution
 - [x] Approval is fingerprint-bound to the exact action parameters; changed actions invalidate approval and stop the task.
 - [x] Audit events record approval, denial, invalidation, action and verification outcomes.
 - [x] Dry-run, cancellation, timeout, step/time caps, emergency stop and verification-evidence reporting have regression coverage.
-- [ ] Add durable idempotency keys and recovery semantics for interrupted/retried actions.
-- [ ] Add explicit permission scopes for file/app/device adapters before expanding beyond the constrained browser adapter.
-- [ ] Expand end-to-end workflow coverage for the target Windows environment and verify all failure paths.
+- [x] Add durable idempotency keys with canonical request hashing, atomic task reservation before planning, replay of the existing task for the same key/payload, and HTTP 409 for key reuse with a different payload.
+- [x] Send idempotency keys from the frontend and reuse the same key when the same submission is retried after a network failure.
+- [x] On backend startup, mark unfinished tasks interrupted/failed, mark in-flight step outcomes unknown, and never automatically replay external actions.
+- [x] Reconstruct persisted task/step views after restart and surface “Outcome unknown — inspect the target app” in the UI.
+- [x] Add regression tests for duplicate and concurrent submissions, request-hash conflicts, restart recovery and no-replay behavior.
+- [x] Add explicit, persistent file/app/device permission scopes with safe defaults. Browser file transfers require a confirmed file-access grant plus per-step approval; app and device actions remain blocked because those adapters are not installed.
+- [ ] Add durable per-step operation/result journaling and adapter-level recovery before any future automatic retry of external side effects.
+- [ ] Implement and validate app-control and device/HID adapters only after their scope grants and safety tests are complete.
+- [ ] Validate real Windows process termination/restart and end-to-end failure paths on the target PC.
 
-**Exit gate:** supported workflows run end-to-end; unsupported actions fail closed; every consequential action is attributable and auditable. Gate 2 remains open until remaining items and CI pass.
+**Exit gate:** supported workflows run end-to-end; unsupported actions fail closed; every consequential action is attributable and auditable; interrupted actions are never silently replayed. Gate 2 remains open until remaining permission, journaling and target-PC checks pass.
 
 ### Gate 3 — Voice and gesture
 - [x] Audit existing MediaPipe hand-tracking engine, gesture modes, calibration and real-trial diagnostics.
@@ -111,7 +117,9 @@ A BID (BOZZ Idea ID) preserves the user's original idea and tracks its evolution
 - [x] Label the offline BOZZ wake-word engine as unavailable rather than presenting browser speech recognition as an offline detector.
 - [ ] Implement and package a local wake-word model trained specifically for “BOZZ”; verify its licence, model provenance and Windows CPU/RAM cost.
 - [ ] Add a native background/tray runtime so the user can deliberately keep BOZZ running after closing the main window; quitting must stop all sensors.
-- [ ] Add explicit background-listening opt-in, persistent mic indicator, OS permission handling, pause/disable controls and a wake event handoff to Electron.
+- [x] Add an explicit, revocable preference for future background listening; default off and does not activate the microphone in this build.
+- [x] Add a tested start gate requiring wake-word mode, user consent, an installed local engine and OS microphone permission.
+- [ ] Add a persistent native mic indicator, OS permission handoff, pause/disable runtime controls and a wake event handoff to Electron.
 - [ ] Gesture confidence, calibration, debounce, false-trigger and latency benchmarks on the target Windows PC.
 - [ ] Test gesture operation in Mini Orb mode, camera-off behaviour, camera removal, app quit and restart.
 - [ ] Speech/gesture may create plans; they never silently approve risky actions or bypass Gate 2.

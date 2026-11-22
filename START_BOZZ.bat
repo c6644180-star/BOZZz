@@ -78,7 +78,8 @@ if errorlevel 1 (
 )
 echo [OK] Backend dependencies ready.
 
-rem ---------- Verify Node 24+ ----------
+rem ---------- Verify Node.js runtime supported by Vite 8 ----------
+rem Vite 8 supports Node 20.19+ or 22.12+. Node 22.21.1 is supported.
 echo.
 echo [3/6] Checking Node.js and npm...
 where node >nul 2>&1
@@ -91,16 +92,22 @@ if errorlevel 1 (
   echo [ERROR] npm is not installed or is not on PATH.
   goto :fail
 )
-for /f "tokens=1 delims=." %%V in ('node -p "process.versions.node.split('.')[0]"') do set "NODE_MAJOR=%%V"
-if not defined NODE_MAJOR (
+set "NODE_VERSION="
+for /f "delims=" %%V in ('node -p "process.versions.node"') do set "NODE_VERSION=%%V"
+if not defined NODE_VERSION (
   echo [ERROR] Could not read the Node.js version.
   goto :fail
 )
-if %NODE_MAJOR% LSS 24 (
-  echo [ERROR] BOZZ requires Node.js 24 or newer. Detected major version %NODE_MAJOR%.
+node -e "const [major,minor]=process.versions.node.split('.').map(Number);const ok=(major===20&&minor>=19)||(major===22&&minor>=12)||major>22;process.exit(ok?0:1)" >nul 2>&1
+if errorlevel 1 (
+  echo [ERROR] This BOZZ frontend requires Node.js 20.19+ or 22.12+.
+  echo [INFO] Detected Node.js %NODE_VERSION%.
+  echo [INFO] Your Node.js version must meet the Vite 8 runtime requirement.
   goto :fail
 )
-echo [OK] Node.js major version %NODE_MAJOR%.
+echo [OK] Node.js %NODE_VERSION% is supported.
+for /f "delims=" %%V in ('npm --version') do set "NPM_VERSION=%%V"
+echo [OK] npm %NPM_VERSION% found.
 
 rem ---------- Install locked frontend dependencies ----------
 echo.

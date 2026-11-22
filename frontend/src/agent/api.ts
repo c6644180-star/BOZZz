@@ -39,10 +39,11 @@ export function updateAgentSettings(patch: Partial<AgentSettings> & { reset_emer
 
 export function createAgentTask(
   task: string,
-  options: { dryRun?: boolean | null; allowScreenshots?: boolean; screenshotProvider?: string | null } = {},
+  options: { dryRun?: boolean | null; allowScreenshots?: boolean; screenshotProvider?: string | null; idempotencyKey?: string } = {},
 ): Promise<AgentTask> {
   return request<AgentTask>('/tasks', {
     method: 'POST',
+    headers: { 'Idempotency-Key': options.idempotencyKey ?? crypto.randomUUID() },
     body: JSON.stringify({
       task,
       dry_run: options.dryRun ?? null,

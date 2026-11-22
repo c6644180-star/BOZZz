@@ -7,7 +7,7 @@ export const VOICE_MODE_COPY: Record<VoiceMode, { label: string; detail: string 
   },
   'wake-word': {
     label: 'Wake word (not installed)',
-    detail: 'Requires a trained local BOZZ wake-word model. No background microphone listener is started until that engine is installed and explicitly enabled.',
+    detail: 'The local detector can be started manually from Settings after a trained BOZZ model is validated. Detection restores BOZZ; press the mic button to speak. No command recording starts automatically.',
   },
   manual: {
     label: 'Manual',
@@ -22,10 +22,10 @@ export function resolveVoiceMode(settings: { voiceMode?: unknown; wakeWord?: boo
   return settings.wakeWord === true ? 'wake-word' : 'push-to-talk'
 }
 
-export function canOpenMicrophone(mode: VoiceMode, hasManualPress: boolean): boolean {
-  // Only a configured wake-word engine may open the mic without a manual
-  // action. Push-to-talk and manual modes both require an explicit user press.
-  return mode === 'wake-word' || hasManualPress
+export function canOpenMicrophone(mode: VoiceMode, hasManualPress: boolean, backgroundGatePassed = false): boolean {
+  // Wake-word mode is never permission by itself. It requires the separately
+  // verified background gate; all other modes require a current manual press.
+  return hasManualPress || (mode === 'wake-word' && backgroundGatePassed)
 }
 
 export function pttLatencyMs(releasedAt: number, finalisedAt: number): number | null {
@@ -44,3 +44,21 @@ export function shouldSuspendOnLoad(mode: VoiceMode, sustainedHigh: boolean): bo
 
 export const HIGH_LOAD_MESSAGE =
   'Main-thread load stayed high, so wake-word listening was suspended. BOZZ switched to push-to-talk. Two speech models never run at once.'
+
+
+/**
+ * A background listener may start only when all four independent conditions
+ * are true. Consent is a user preference, not a substitute for OS permission
+ * or an installed local wake-word engine.
+ */
+export function canStartBackgroundListening(input: {
+  mode: VoiceMode
+  consentGranted: boolean
+  engineAvailable: boolean
+  osPermissionGranted: boolean
+}): boolean {
+  return input.mode === 'wake-word' &&
+    input.consentGranted &&
+    input.engineAvailable &&
+    input.osPermissionGranted
+}

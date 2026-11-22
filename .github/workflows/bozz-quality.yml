@@ -10,6 +10,7 @@ on:
       - feat/gate-3-voice-gesture
       - feat/gate-1-memory-conversations
       - feat/gate-1-conversations
+      - feat/gate-2-idempotency
   workflow_dispatch:
 
 permissions:
@@ -37,7 +38,7 @@ jobs:
         run: python -m pip install -r requirements.txt
       - name: Compile backend
         working-directory: backend
-        run: python -m compileall -q app tests test_imports.py
+        run: python -m compileall -q app tests scripts test_imports.py
       - name: Import API routers
         working-directory: backend
         run: python test_imports.py
@@ -62,7 +63,7 @@ jobs:
         run: npm ci
       - name: Check Electron main-process syntax
         working-directory: frontend
-        run: node --check electron/main.cjs
+        run: node --check electron/main.cjs && node --check electron/preload.cjs && node --check electron/desktopApps.cjs && node --check electron/desktopApps.test.cjs && node --check electron/windowRegistry.cjs && node --check electron/windowRegistry.test.cjs && node --check electron/externalWindowRegistry.cjs && node --check electron/externalWindowRegistry.test.cjs && node --check electron/backgroundActivity.cjs && node --check electron/backgroundActivity.test.cjs && node --test electron/windowRegistry.test.cjs electron/desktopApps.test.cjs electron/externalWindowRegistry.test.cjs electron/backgroundActivity.test.cjs
       - name: Run frontend tests
         working-directory: frontend
         run: npm test -- --passWithNoTests

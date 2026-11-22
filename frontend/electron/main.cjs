@@ -1,6 +1,6 @@
 'use strict'
 
-const { app, BrowserWindow, Menu, globalShortcut, ipcMain, powerMonitor, screen } = require('electron')
+const { app, BrowserWindow, Menu, Tray, nativeImage, globalShortcut, ipcMain, powerMonitor, screen, systemPreferences } = require('electron')
 const path = require('node:path')
 const { initialState, reduceMode } = require('./mini/state.cjs')
 const {
@@ -11,6 +11,11 @@ const {
 } = require('./mini/ipc.cjs')
 const { clampToWorkArea, dockPoint, randomTarget, stepToward } = require('./mini/wander.cjs')
 const { computePauseReasons, shouldPauseAnimation } = require('./mini/pause.cjs')
+const { launchDesktopApp } = require('./desktopApps.cjs')
+const { snapshotManagedWindows, focusManagedWindow } = require('./windowRegistry.cjs')
+const { createExternalWindowRegistry } = require('./externalWindowRegistry.cjs')
+const { setBackgroundActivity } = require('./backgroundActivity.cjs')
+const externalWindowRegistry = createExternalWindowRegistry()
 
 const WINDOW_SIZES = {
   small: { width: 240, height: 250 },
@@ -61,6 +66,10 @@ let pauseCheckedAt = 0
 let pauseReasons = []
 let lastPauseKey = ''
 let emergencyShortcutRegistered = false
+let tray = null
+let isQuitting = false
+let gestureCameraActive = false
+let wakeWordActive = false
 
 function isFromMain(event) {
   return Boolean(mainWindow && !mainWindow.isDestroyed() && event.sender === mainWindow.webContents)
@@ -78,6 +87,13 @@ function sendMini(channel, payload) {
 function sendMain(channel, payload) {
   if (!mainWindow || mainWindow.isDestroyed()) return
   mainWindow.webContents.send(channel, payload)
+}
+
+function updateMainBackgroundActivity() {
+  return setBackgroundActivity(mainWindow, {
+    cameraActive: lastState.cameraActive || gestureCameraActive || wakeWordActive,
+    miniMode: modeState.mode === 'mini',
+  })
 }
 
 function forwardMiniAction(action) {
@@ -118,6 +134,46 @@ function hardenWindow(win) {
   win.webContents.on('will-attach-webview', (event) => event.preventDefault())
 }
 
+function refreshTrayStatus() {
+  if (!tray) return
+  const mic = lastState.listening || wakeWordActive ? 'ACTIVE' : 'off'
+  const camera = lastState.cameraActive || gestureCameraActive ? 'ACTIVE' : 'off'
+  tray.setToolTip(`BOZZ — Microphone: ${mic} · Camera: ${camera}`)
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: `Microphone: ${mic}`, enabled: false },
+    { label: 'Stop wake-word listener', enabled: wakeWordActive, click: () => sendMain('voice:stop-wake-word') },
+    { label: `Camera: ${camera}`, enabled: false },
+    { label: 'Stop camera & gestures', enabled: gestureCameraActive, click: () => sendMain('hgi:stop-camera') },
+    { type: 'separator' },
+    { label: 'Open Calculator', click: () => launchDesktopApp('calculator') },
+    { label: 'Open Notepad', click: () => launchDesktopApp('notepad') },
+    { label: 'Open Paint', click: () => launchDesktopApp('paint') },
+    { type: 'separator' },
+    { label: 'Open BOZZ', click: () => showMainWindow() },
+    { type: 'separator' },
+    { label: 'Quit BOZZ', click: () => app.quit() },
+  ]))
+}
+
+function createTray() {
+  if (tray) return
+  // A tiny bundled PNG keeps the tray icon local and reliable on Windows.
+  const icon = nativeImage.createFromDataURL('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAyElEQVR4nGPk4Bb6zzCAgAWXxL21ulS1SCn4MlZxRvQQoLbFhByC4gBky3G5mFyAy2wmeliObiayXUz4FNLSESgOgLmIlpajOwJmJ85cgA28f3WboBpBMVWSHESUA4ixGF0tsQ7BSAP0BgQdQIrvydFHUhqAAWKCl1gHDP4oGHXAqANGHTDqAFoDsopicusHbIBgCJBav5Oqb2hEAcw3tGgRwZvl9GoXotuDEQW07JhgMxvuAFztdlpYjmzX4Oqa0dIhRHdO6Q0AC7pP9smkSCsAAAAASUVORK5CYII=')
+  tray = new Tray(icon)
+  refreshTrayStatus()
+  tray.on('click', () => showMainWindow())
+}
+
+function showMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) createMainWindow()
+  if (modeState.mode === 'mini' && miniWindow && !miniWindow.isDestroyed()) {
+    miniWindow.showInactive()
+  } else {
+    mainWindow?.show()
+    mainWindow?.focus()
+  }
+}
+
 function createMainWindow() {
   mainWindow = new BrowserWindow({
     width: 1440,
@@ -142,8 +198,30 @@ function createMainWindow() {
     // mode; showing here would leave both windows visible.
     if (modeState.mode !== 'mini') mainWindow?.show()
   })
+  mainWindow.on('close', (event) => {
+    if (isQuitting) return
+    event.preventDefault()
+    if (modeState.mode === 'mini') exitMini()
+    mainWindow?.hide()
+    const micStatus = lastState.listening || wakeWordActive ? 'ACTIVE' : 'off'
+    const cameraStatus = lastState.cameraActive || gestureCameraActive ? 'ACTIVE' : 'off'
+    tray?.displayBalloon?.({ title: 'BOZZ is still running', content: `BOZZ is in the tray. Microphone: ${micStatus}. Camera: ${cameraStatus}. Use the tray menu to stop active features.` })
+  })
+  mainWindow.webContents.on('render-process-gone', () => {
+    // A renderer crash ends its MediaStream. Clear the tray indicator rather
+    // than leaving a stale microphone-active status behind.
+    wakeWordActive = false
+    gestureCameraActive = false
+    lastState = { ...lastState, listening: false, cameraActive: false }
+    updateMainBackgroundActivity()
+    refreshTrayStatus()
+  })
   mainWindow.on('closed', () => {
+    wakeWordActive = false
+    gestureCameraActive = false
+    lastState = { ...lastState, listening: false, cameraActive: false }
     mainWindow = null
+    refreshTrayStatus()
     if (miniWindow && !miniWindow.isDestroyed()) miniWindow.destroy()
   })
 
@@ -254,7 +332,7 @@ function exitMini() {
   miniWindow = null
   if (win && !win.isDestroyed()) win.destroy()
   if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.setBackgroundThrottling(true)
+    updateMainBackgroundActivity()
     mainWindow.show()
     mainWindow.focus()
     sendMain('mini:mode', { mode: 'full' })
@@ -390,9 +468,86 @@ ipcMain.on('mini:set-mode', (event, mode) => {
   else exitMini()
 })
 
+// Expose only BOZZ-owned windows. Other applications are deliberately out of scope.
+ipcMain.handle('desktop:set-wake-word-activity', (event, active) => {
+  if (!isFromMain(event)) return { ok: false, reason: 'Untrusted desktop request.' }
+  if (typeof active !== 'boolean') return { ok: false, reason: 'Wake-word activity must be a boolean.' }
+  wakeWordActive = active
+  refreshTrayStatus()
+  return updateMainBackgroundActivity()
+})
+
+ipcMain.handle('desktop:show-main', (event) => {
+  if (!isFromMain(event)) return { ok: false, reason: 'Untrusted desktop request.' }
+  showMainWindow()
+  return { ok: true }
+})
+
+ipcMain.handle('desktop:set-background-activity', (event, active) => {
+  if (!isFromMain(event)) return { ok: false, reason: 'Untrusted desktop request.' }
+  if (typeof active !== 'boolean') return { ok: false, reason: 'Background activity must be a boolean.' }
+  gestureCameraActive = active
+  refreshTrayStatus()
+  return updateMainBackgroundActivity()
+})
+
+ipcMain.handle('desktop:list-managed-windows', (event) => {
+  if (!isFromMain(event)) return []
+  return snapshotManagedWindows({ mainWindow, miniWindow })
+})
+
+ipcMain.handle('desktop:focus-managed-window', (event, id) => {
+  if (!isFromMain(event)) return { ok: false, reason: 'Untrusted desktop request.' }
+  return focusManagedWindow(id, { mainWindow, miniWindow })
+})
+
+// Discover and focus only a fixed set of supported Windows applications.
+// The renderer receives opaque one-use IDs, never native window handles or titles.
+ipcMain.handle('desktop:list-external-windows', (event) => {
+  if (!isFromMain(event)) return { ok: false, windows: [], reason: 'Untrusted desktop request.' }
+  return externalWindowRegistry.list()
+})
+
+ipcMain.handle('desktop:focus-external-window', (event, id) => {
+  if (!isFromMain(event)) return { ok: false, reason: 'Untrusted desktop request.' }
+  return externalWindowRegistry.focus(id)
+})
+
+// Launch only fixed applications, only after a direct request from the main renderer.
+ipcMain.handle('desktop:launch-app', (event, appId) => {
+  if (!isFromMain(event)) return { ok: false, reason: 'Untrusted desktop request.' }
+  if (!['calculator', 'notepad', 'paint'].includes(appId)) {
+    return { ok: false, reason: 'This application is not on the BOZZ allowlist.' }
+  }
+  return launchDesktopApp(appId)
+})
+
 ipcMain.handle('mini:get-mode', (event) => {
   if (!isFromMain(event) && !isFromMini(event)) return 'full'
   return modeState.mode
+})
+
+// Read-only native OS privacy status. This does not request permission or open a sensor.
+ipcMain.handle('privacy:get-media-access', (event) => {
+  if (!isFromMain(event)) {
+    return { platform: process.platform, microphone: 'unknown', camera: 'unknown', available: false }
+  }
+  const readStatus = (mediaType) => {
+    try {
+      const status = systemPreferences.getMediaAccessStatus(mediaType)
+      return ['not-determined', 'granted', 'denied', 'restricted', 'unknown'].includes(status)
+        ? status
+        : 'unknown'
+    } catch {
+      return 'unknown'
+    }
+  }
+  return {
+    platform: process.platform,
+    microphone: readStatus('microphone'),
+    camera: readStatus('camera'),
+    available: process.platform === 'win32' || process.platform === 'darwin',
+  }
 })
 
 ipcMain.on('mini:open-full', (event) => {
@@ -410,6 +565,7 @@ ipcMain.on('mini:state', (event, raw) => {
   const state = sanitizeMiniState(raw)
   if (!state) return
   lastState = state
+  refreshTrayStatus()
   modeState = reduceMode(modeState, { type: 'mic', value: state.listening })
   modeState = reduceMode(modeState, { type: 'camera', value: state.cameraActive })
   sendMini('mini:state', state)
@@ -475,6 +631,7 @@ ipcMain.on('mini:action', (event, raw) => {
 })
 
 app.whenReady().then(() => {
+  createTray()
   createMainWindow()
 
   const toggleRegistered = globalShortcut.register('CommandOrControl+Alt+M', toggleMini)
@@ -491,10 +648,16 @@ app.whenReady().then(() => {
 })
 
 app.on('before-quit', () => {
+  isQuitting = true
   stopWander()
+  if (tray) {
+    tray.destroy()
+    tray = null
+  }
   globalShortcut.unregisterAll()
 })
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit()
+  // The tray owns the background lifecycle on every desktop platform.
+  // Explicit Quit in the tray menu is the only normal exit path.
 })

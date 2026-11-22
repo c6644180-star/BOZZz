@@ -51,6 +51,30 @@ const api = {
     const mode = await ipcRenderer.invoke('mini:get-mode')
     return mode === 'mini' ? 'mini' : 'full'
   },
+  getMediaAccessStatus: async () => ipcRenderer.invoke('privacy:get-media-access'),
+  setWakeWordActivity: async (active) => {
+    if (typeof active !== 'boolean') return { ok: false, reason: 'Wake-word activity must be a boolean.' }
+    return ipcRenderer.invoke('desktop:set-wake-word-activity', active)
+  },
+  showMain: () => ipcRenderer.invoke('desktop:show-main'),
+  setBackgroundActivity: async (active) => {
+    if (typeof active !== 'boolean') return { ok: false, reason: 'Background activity must be a boolean.' }
+    return ipcRenderer.invoke('desktop:set-background-activity', active)
+  },
+  listManagedWindows: async () => ipcRenderer.invoke('desktop:list-managed-windows'),
+  focusManagedWindow: async (id) => {
+    if (id !== 'main' && id !== 'mini') return { ok: false, reason: 'Unknown BOZZ window.' }
+    return ipcRenderer.invoke('desktop:focus-managed-window', id)
+  },
+  listExternalWindows: async () => ipcRenderer.invoke('desktop:list-external-windows'),
+  focusExternalWindow: async (id) => {
+    if (typeof id !== 'string' || !/^[0-9a-f-]{36}$/i.test(id)) return { ok: false, reason: 'Unknown external window.' }
+    return ipcRenderer.invoke('desktop:focus-external-window', id)
+  },
+  launchApp: async (appId) => {
+    if (!['calculator', 'notepad', 'paint'].includes(appId)) return { ok: false, reason: 'Unsupported application.' }
+    return ipcRenderer.invoke('desktop:launch-app', appId)
+  },
   openFull: () => ipcRenderer.send('mini:open-full'),
   quit: () => ipcRenderer.send('mini:quit'),
   publishMiniState: (state) => {
@@ -65,6 +89,8 @@ const api = {
   onMiniPause: (callback) => subscribe('mini:pause', callback),
   onMiniMode: (callback) => subscribe('mini:mode', callback),
   onMiniAction: (callback) => subscribe('mini:action', callback),
+  onStopCamera: (callback) => subscribe('hgi:stop-camera', callback),
+  onStopWakeWord: (callback) => subscribe('voice:stop-wake-word', callback),
 }
 
 contextBridge.exposeInMainWorld('bozzDesktop', api)
