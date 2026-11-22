@@ -4,6 +4,7 @@
 
 - Electron creates a local tray icon, hides the main window on close, restores it from the tray, and exposes an explicit Quit action.
 - Tray labels reflect renderer-reported microphone and camera activity. The tray does not activate either sensor.
+- Electron exposes a read-only native microphone/camera permission status query to the main Settings window on Windows/macOS. It does not request permissions or activate devices; unsupported platforms report unavailable.
 - Camera access is opt-in; camera shutdown releases media tracks. Microphone capture requires an explicit user action except for a future wake-word path that must pass all independent gates.
 - Background listening is off by default. A saved consent preference is not itself microphone permission.
 - The wake-word engine is reported unavailable until the user supplies the three local ONNX assets and installs the optional runtime.
@@ -51,7 +52,7 @@ Threshold and cooldown are evaluation parameters, not universal recommended sett
 
 - No bundled BOZZ wake-word classifier or verified “BOZZ” phrase model is included.
 - No claim of 100% wake-word detection, zero false activations, or reliable wake while the UI is closed.
-- Native Windows microphone permission state is not yet independently queried by Electron; the renderer/OS permission flow must be verified on the target PC.
+- Native OS permission status is queried read-only through Electron on Windows/macOS. Verify the returned values against Windows Settings > Privacy & security > Microphone and Camera on the target PC; OS status is not proof that a device is currently active or that a particular browser capture will succeed.
 - Tray sensor labels are renderer-reported status, not independent hardware telemetry.
 - The current backend frame adapter is not connected to an audio capture device. Do not connect it to background capture until consent, native OS permission, lifecycle, performance and false-activation acceptance are verified.
 - Windows tray lifecycle, camera-release and microphone permission behaviour require manual target-PC testing; CI cannot prove them.
