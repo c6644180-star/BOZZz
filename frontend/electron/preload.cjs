@@ -52,6 +52,10 @@ const api = {
     return mode === 'mini' ? 'mini' : 'full'
   },
   getMediaAccessStatus: async () => ipcRenderer.invoke('privacy:get-media-access'),
+  setBackgroundActivity: async (active) => {
+    if (typeof active !== 'boolean') return { ok: false, reason: 'Background activity must be a boolean.' }
+    return ipcRenderer.invoke('desktop:set-background-activity', active)
+  },
   listManagedWindows: async () => ipcRenderer.invoke('desktop:list-managed-windows'),
   focusManagedWindow: async (id) => {
     if (id !== 'main' && id !== 'mini') return { ok: false, reason: 'Unknown BOZZ window.' }
