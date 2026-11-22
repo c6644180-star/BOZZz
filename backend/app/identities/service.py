@@ -101,6 +101,7 @@ class IdentityService:
         )
 
         self._store.create_identity(record)
+        self._store.set_active_identity_if_missing(owner_id, identity_id, now)
         logger.info("identity created id=%s name=%s", identity_id, name)
         return record
 
@@ -270,9 +271,13 @@ class IdentityService:
         if record["owner_id"] != caller_owner_id:
             raise PermissionError("You do not own this identity.")
 
-        # Build memory boundary report
-        new_memory = _parse_config(record["memory_ownership_settings"])
+        # Read the persisted current identity before changing the selection.
         current_memory = self._get_current_memory_ownership(caller_owner_id)
+        if not self._store.set_active_identity(caller_owner_id, identity_id, _iso_now()):
+            raise PermissionError("This identity is not active or is not owned by you.")
+
+        # Build memory boundary report from the persisted old/new identities.
+        new_memory = _parse_config(record["memory_ownership_settings"])
         boundary_report = {
             "previous_identity": current_memory,
             "new_identity": new_memory,
@@ -290,15 +295,10 @@ class IdentityService:
         return identity_data
 
     def _get_current_memory_ownership(self, owner_id: str) -> dict:
-        """Get the memory ownership settings of the current active identity.
-
-        This is a simplified lookup; in a full implementation, the "active"
-        identity would be tracked per session.
-        """
-        identities = self._store.list_identities(owner_id=owner_id)
-        if identities:
-            last = identities[-1]  # Assume most recently created/updated is active
-            return _parse_config(last.get("memory_ownership_settings", "{}"))
+        """Read memory ownership from the owner's durable active identity."""
+        active = self._store.get_active_identity(owner_id)
+        if active:
+            return _parse_config(active.get("memory_ownership_settings", "{}"))
         return {"private": True, "shareable": False}
 
     # ----------------------------------------------------------- archive/delete
@@ -313,10 +313,17 @@ class IdentityService:
         record = self._require_identity(identity_id)
         if record["owner_id"] != caller_owner_id:
             raise PermissionError("You do not own this identity.")
-        self._store.update_identity(
-            identity_id,
-            status="archived",
-        )
+        was_active = self._store.get_active_identity(caller_owner_id)
+        self._store.update_identity(identity_id, status="archived")
+        if was_active and was_active["id"] == identity_id:
+            self._store.clear_active_identity(caller_owner_id, identity_id)
+            replacement = next(
+                (item for item in self._store.list_identities(owner_id=caller_owner_id)
+                 if item["status"] == "active"),
+                None,
+            )
+            if replacement:
+                self._store.set_active_identity(caller_owner_id, replacement["id"], _iso_now())
         updated = self.get_identity(identity_id)
         logger.info("identity archived id=%s name=%s", identity_id, record["name"])
         return updated
@@ -337,7 +344,16 @@ class IdentityService:
             raise ValueError(
                 "Cannot delete the last active identity. Archive it instead."
             )
+        was_active = self._store.get_active_identity(caller_owner_id)
         result = self._store.delete_identity(identity_id)
+        if result and was_active and was_active["id"] == identity_id:
+            replacement = next(
+                (item for item in self._store.list_identities(owner_id=caller_owner_id)
+                 if item["status"] == "active"),
+                None,
+            )
+            if replacement:
+                self._store.set_active_identity(caller_owner_id, replacement["id"], _iso_now())
         logger.info("identity deleted id=%s name=%s", identity_id, record["name"])
         return result
 
