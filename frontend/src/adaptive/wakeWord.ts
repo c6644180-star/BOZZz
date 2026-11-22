@@ -50,3 +50,25 @@ export function wakeWordStatus(): {
     options: engine.available ? [] : [...WAKE_WORD_OPTIONS],
   }
 }
+
+
+export interface WakeWordStartGate {
+  mode: 'push-to-talk' | 'wake-word' | 'manual'
+  consentGranted: boolean
+  osPermissionGranted: boolean
+}
+
+/** Centralized guard used by every future local engine adapter. */
+export async function startWakeWordEngineSafely(
+  engine: WakeWordEngine,
+  gate: WakeWordStartGate,
+  onWake: () => void,
+): Promise<WakeWordStartResult> {
+  if (!engine.available) {
+    return { ok: false, detail: engine.reason ?? WAKE_WORD_NOT_INSTALLED }
+  }
+  if (gate.mode !== 'wake-word' || !gate.consentGranted || !gate.osPermissionGranted) {
+    return { ok: false, detail: 'Background listening is blocked until wake-word mode, explicit consent, and OS microphone permission are all enabled.' }
+  }
+  return engine.start(onWake)
+}
