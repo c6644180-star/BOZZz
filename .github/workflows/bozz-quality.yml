@@ -63,7 +63,7 @@ jobs:
         run: npm ci
       - name: Check Electron main-process syntax
         working-directory: frontend
-        run: node --check electron/main.cjs && node --check electron/desktopApps.cjs
+        run: node --check electron/main.cjs && node --check electron/desktopApps.cjs && node --check electron/windowRegistry.cjs && node --check electron/windowRegistry.test.cjs && node --test electron/windowRegistry.test.cjs
       - name: Run frontend tests
         working-directory: frontend
         run: npm test -- --passWithNoTests
