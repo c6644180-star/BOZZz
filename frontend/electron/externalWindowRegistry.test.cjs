@@ -55,7 +55,12 @@ test('focus rejects guessed IDs and consumes a valid token after one use', async
   const registry = createExternalWindowRegistry({
     platform: 'win32',
     createId: () => 'known-token',
-    execFileImpl: fakeExec(JSON.stringify([{ processId: 22, processName: 'notepad', handle: 4444 }]), null, calls),
+    execFileImpl: (file, args, options, callback) => {
+      calls.push({ file, args, options })
+      callback(null, calls.length === 1
+        ? JSON.stringify([{ processId: 22, processName: 'notepad', handle: 4444 }])
+        : 'OK', '')
+    },
   })
   await registry.list()
   assert.equal((await registry.focus('guessed-token')).ok, false)
