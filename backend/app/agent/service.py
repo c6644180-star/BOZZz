@@ -657,6 +657,10 @@ class AgentService:
         stored.setdefault("handoff", False)
         stored.setdefault("screenshots_allowed", False)
         stored.setdefault("screenshot_provider", None)
+        stored.setdefault("current_application", (
+            next((step.get("application") for step in stored.get("steps", []) if step.get("application")), None)
+            or "Browser"
+        ))
         return stored
 
     def tasks(self, limit: int = 20) -> list[dict[str, Any]]:
