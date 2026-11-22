@@ -98,7 +98,8 @@ A BID (BOZZ Idea ID) preserves the user's original idea and tracks its evolution
 ### Gate 3 — Voice and gesture
 - [x] Audit existing MediaPipe hand-tracking engine, gesture modes, calibration and real-trial diagnostics.
 - [x] Verify camera capture requests video only (audio is explicitly disabled).
-- [x] Verify camera shutdown releases every media track; add a regression test for idempotent stop.
+- [x] Verify camera shutdown releases every media track; add regression tests for idempotent stop and track-release failures.
+- [x] Add regression tests for denied camera permission and unavailable camera APIs; verify no stream is retained when startup fails.
 - [x] Keep microphone closed in push-to-talk/manual modes until an explicit user action; add unit tests for the gate.
 - [x] Label the offline BOZZ wake-word engine as unavailable rather than presenting browser speech recognition as an offline detector.
 - [ ] Implement and package a local wake-word model trained specifically for “BOZZ”; verify its licence, model provenance and Windows CPU/RAM cost.
