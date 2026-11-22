@@ -52,6 +52,10 @@ const api = {
     return mode === 'mini' ? 'mini' : 'full'
   },
   getMediaAccessStatus: async () => ipcRenderer.invoke('privacy:get-media-access'),
+  launchApp: async (appId) => {
+    if (!['calculator', 'notepad', 'paint'].includes(appId)) return { ok: false, reason: 'Unsupported application.' }
+    return ipcRenderer.invoke('desktop:launch-app', appId)
+  },
   openFull: () => ipcRenderer.send('mini:open-full'),
   quit: () => ipcRenderer.send('mini:quit'),
   publishMiniState: (state) => {
