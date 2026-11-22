@@ -11,6 +11,7 @@ import { VOICE_MODE_COPY } from '../adaptive/voice'
 import { WAKE_WORD_NOT_INSTALLED } from '../adaptive/wakeWord'
 import { ReliabilitySettings } from '../components/settings/ReliabilitySettings'
 import { DesktopAppLauncher } from '../components/settings/DesktopAppLauncher'
+import { ManagedWindowPanel } from '../components/settings/ManagedWindowPanel'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { ConnStatus, VoiceMode } from '../types/bozz'
@@ -118,6 +119,7 @@ export default function SettingsPage() {
         <FileAccessSettings />
         <MessageSettings />
         <DesktopAppLauncher />
+        <ManagedWindowPanel />
         <div className="status-rows">
           <p><strong>Backend (/api/health):</strong> {backend === 'online' ? 'online' : backend === 'checking' ? 'checking…' : 'offline — no backend connection'}</p>
           <p><strong>Local AI:</strong> {ai.available ? `${ai.provider} · ${ai.configuredModel}` : `unavailable — ${ai.detail ?? 'checking…'}`}</p>
