@@ -25,7 +25,7 @@ def main() -> int:
         print(f"Model staging failed: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 2
     print(json.dumps(report, indent=2))
-    print("\\nCandidate staged only. BOZZ's active model was not changed.")
+    print("\nCandidate staged only. BOZZ's active model was not changed.")
     return 0
 
 
