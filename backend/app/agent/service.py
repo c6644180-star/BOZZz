@@ -392,7 +392,7 @@ class AgentService:
                     return self._task_view(existing)
                 stored = self._store.get_task(existing_id)
                 if stored is not None:
-                    return stored
+                    return self.task(existing_id)
                 raise AgentError("The idempotency record exists but its task record is missing; no task was replayed.")
 
             # A duplicate request is returned above even if the agent has since
@@ -430,7 +430,7 @@ class AgentService:
                     return self._task_view(existing)
                 stored = self._store.get_task(reserved_id)
                 if stored is not None:
-                    return stored
+                    return self.task(reserved_id)
                 raise AgentError("The idempotent task reservation could not be recovered; no task was replayed.")
 
             record = _Task(
@@ -649,6 +649,14 @@ class AgentService:
         stored["pending_approval"] = None
         stored["injection_warnings"] = []
         stored["notes"] = []
+        stored.setdefault("started_at", None)
+        stored.setdefault("finished_at", None)
+        stored.setdefault("elapsed_ms", 0)
+        stored.setdefault("current_step_id", None)
+        stored.setdefault("paused", False)
+        stored.setdefault("handoff", False)
+        stored.setdefault("screenshots_allowed", False)
+        stored.setdefault("screenshot_provider", None)
         return stored
 
     def tasks(self, limit: int = 20) -> list[dict[str, Any]]:
