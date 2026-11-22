@@ -14,6 +14,8 @@ from app.identities.service import IdentityService, _iso_now
 from app.modules import PermissionDenied
 from app.permissions.policy import assess
 
+router = APIRouter(tags=["identity-management"])
+
 
 def _parse_config(value: str) -> dict:
     """Parse a JSON config string, returning empty dict on failure."""
@@ -35,6 +37,15 @@ def _get_service() -> IdentityService:
     db.initialize()
     store = IntentStore(db)
     return IdentityService(store)
+
+
+
+
+def _require_owned_identity(service: IdentityService, identity_id: str) -> None:
+    """Reject identity operations outside the current local user's ownership."""
+    record = service._store._require_identity(identity_id)
+    if record.owner_id != get_owner_id():
+        raise PermissionError("You do not own this identity.")
 
 
 class CreateIdentityRequest(BaseModel):
@@ -144,38 +155,32 @@ def create_identity(payload: CreateIdentityRequest) -> dict[str, Any]:
 
 
 @router.get("/identities", response_model=IdentityListResponse)
-def list_identities(owner_id: str | None = Query(default=None, min_length=1)) -> dict[str, Any]:
-    """List identities owned by the given owner.
-
-    - If owner_id is omitted, lists all identities (internal use).
-    - Identities are sorted by name alphabetically.
-    - Returns summary data suitable for display in the identity manager UI.
-    """
+def list_identities() -> dict[str, Any]:
+    """List only identities owned by this local BOZZ user."""
     try:
         service = _get_service()
-        records = service.list_identities(owner_id=owner_id)
-        identities = []
-        for r in records:
-            identities.append(
-                IdentityResponse(
-                    id=r["id"],
-                    name=r["name"],
-                    description=r["description"],
-                    personality=_parse_config(r["personality_config"]),
-                    role=r["role"],
-                    greeting=r["greeting"],
-                    voice=_parse_config(r["voice_configuration"]),
-                    appearance=_parse_config(r["appearance_configuration"]),
-                    behaviour=_parse_config(r["behaviour_configuration"]),
-                    associated_projects=json.loads(r["associated_projects"]) if r["associated_projects"] else [],
-                    approved_tools=json.loads(r["approved_tool_references"]) if r["approved_tool_references"] else [],
-                    memory_ownership=_parse_config(r["memory_ownership_settings"]),
-                    creation_timestamp=r["creation_timestamp"],
-                    updated_timestamp=r["updated_timestamp"],
-                    status=r["status"],
-                    schema_version=r["schema_version"],
-                )
+        records = service.list_identities(owner_id=get_owner_id())
+        identities = [
+            IdentityResponse(
+                id=r["id"],
+                name=r["name"],
+                description=r["description"],
+                personality=r.get("personality", {}),
+                role=r["role"],
+                greeting=r["greeting"],
+                voice=r.get("voice", {}),
+                appearance=r.get("appearance", {}),
+                behaviour=r.get("behaviour", {}),
+                associated_projects=r.get("associated_projects", []),
+                approved_tools=r.get("approved_tools", []),
+                memory_ownership=r.get("memory_ownership", {}),
+                creation_timestamp=r["creation_timestamp"],
+                updated_timestamp=r["updated_timestamp"],
+                status=r["status"],
+                schema_version=r["schema_version"],
             )
+            for r in records
+        ]
         return {"identities": identities, "count": len(identities)}
     except Exception as exc:
         logger = configure_logging("INFO").getChild("identity-api")
@@ -193,6 +198,7 @@ def get_identity(identity_id: str) -> dict[str, Any]:
     """
     try:
         service = _get_service()
+        _require_owned_identity(service, identity_id)
         identity = service.get_identity(identity_id)
         if identity is None:
             raise HTTPException(status_code=404, detail=f"Identity '{identity_id}' was not found.")
@@ -218,14 +224,9 @@ def rename_identity(identity_id: str, payload: RenameIdentityRequest) -> dict[st
         service = _get_service()
         # For local single-user design, we allow the rename without
         # explicit ownership check, but the service layer still validates
+        _require_owned_identity(service, identity_id)
         record = service.rename_identity(identity_id, payload.new_name)
-        return {
-            "id": record.id,
-            "name": record.name,
-            "description": record.description,
-            "status": record.status,
-            "updated_timestamp": record.updated_timestamp,
-        }
+        return {"id": record["id"], "name": record["name"], "description": record["description"], "status": record["status"], "updated_timestamp": record["updated_timestamp"]}
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except PermissionError as exc:
@@ -247,6 +248,7 @@ def edit_identity(identity_id: str, payload: UpdateIdentityRequest) -> dict[str,
     """
     try:
         service = _get_service()
+        _require_owned_identity(service, identity_id)
         record = service.edit_identity(
             identity_id,
             description=payload.description,
@@ -257,13 +259,7 @@ def edit_identity(identity_id: str, payload: UpdateIdentityRequest) -> dict[str,
             appearance_configuration=payload.appearance_configuration,
             behaviour_configuration=payload.behaviour_configuration,
         )
-        return {
-            "id": record.id,
-            "name": record.name,
-            "description": record.description,
-            "status": record.status,
-            "updated_timestamp": record.updated_timestamp,
-        }
+        return {"id": record["id"], "name": record["name"], "description": record["description"], "status": record["status"], "updated_timestamp": record["updated_timestamp"]}
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except PermissionError as exc:
@@ -290,7 +286,8 @@ def switch_identity(identity_id: str) -> dict[str, Any]:
         # the database path. For now, we accept the switch if the identity
         # exists and the caller provides the owner context.
         # The frontend must ensure the caller owns this identity.
-        identity = service.switch_identity(identity_id, caller_owner_id="local_user")
+        _require_owned_identity(service, identity_id)
+        identity = service.switch_identity(identity_id, caller_owner_id=get_owner_id())
         return {
             "id": identity["id"],
             "name": identity["name"],
@@ -320,7 +317,8 @@ def archive_identity(identity_id: str) -> dict[str, Any]:
     try:
         service = _get_service()
         # For local single-user design, we use the database path stem as owner
-        service.archive_identity(identity_id, caller_owner_id="local_user")
+        _require_owned_identity(service, identity_id)
+        service.archive_identity(identity_id, caller_owner_id=get_owner_id())
         updated = service.get_identity(identity_id)
         return {
             "id": updated["id"],
@@ -351,7 +349,8 @@ def delete_identity(identity_id: str) -> dict[str, Any]:
     """
     try:
         service = _get_service()
-        result = service.delete_identity(identity_id, caller_owner_id="local_user")
+        _require_owned_identity(service, identity_id)
+        result = service.delete_identity(identity_id, caller_owner_id=get_owner_id())
         if result:
             return {"result": "deleted", "id": identity_id}
         else:
