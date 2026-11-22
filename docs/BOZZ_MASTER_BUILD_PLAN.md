@@ -66,12 +66,18 @@ A BID (BOZZ Idea ID) preserves the user's original idea and tracks its evolution
 **Exit gate:** clean backend compile/import/tests and frontend tests/build on CI.
 
 ### Gate 1 — Core data and identity correctness
-- Identity ownership, active identity persistence and lifecycle invariants.
-- Conversation/message persistence and export/delete.
-- Memory CRUD, source, retention, context budgets and visible memory-use controls.
-- Schema migrations and backup/restore tests.
+- [x] Persist one active identity per local owner in SQLite.
+- [x] Auto-select the first identity without overwriting a later user choice.
+- [x] Enforce owner and active-status checks when switching.
+- [x] Select a remaining active identity when the active identity is archived or deleted.
+- [x] Upgrade existing schema-v4 databases and backfill a deterministic active identity.
+- [x] Expose the active identity through the API and show it in Identity Manager.
+- [x] Add regression tests for persistence across database connections, owner isolation, archive/delete fallback and schema upgrade.
+- [ ] Bind memory records and retrieval to the active identity; verify cross-identity isolation.
+- [ ] Persist conversations/messages with identity ownership and implement export/delete.
+- [ ] Add tested database backup/restore and recovery flow.
 
-**Exit gate:** restart-safe conversations; identity-isolated memory; deletion verified against the database.
+**Exit gate:** restart-safe conversations; identity-isolated memory; deletion verified against the database. Gate 1 is not complete until the remaining unchecked items pass.
 
 ### Gate 2 — Intent and computer-action foundation
 - Typed action registry and schemas.
@@ -156,19 +162,17 @@ A BID (BOZZ Idea ID) preserves the user's original idea and tracks its evolution
 
 ## Current evidence snapshot
 
-- Existing repository already contains substantial UI and modules for the orb, HGI gesture lab, mini orb, agent/intent workflow, spatial workspace, 3D viewer, BCI messages, identity/preferences and BID services.
-- These areas have different maturity levels; the existence of a file or page is not proof of end-to-end reliability.
-- The current repair PR has a GitHub Actions workflow. The previous run on commit `b62d4ea` failed:
-  - Backend router import failed because the preferences API imported a nonexistent module-level `_iso_now`.
-  - Frontend build failed on ErrorBoundary prop/type mismatches and the intent bridge passing an object to a string API.
-  - Frontend unit tests passed: 27 files / 221 tests.
-- A follow-up commit removes the stale import and fixes the ErrorBoundary and intent bridge contracts. The next CI run must confirm whether these repairs pass.
-- No claim is made here that the current PR is ready to merge.
+- Gate 0 passed on commit `bda1228a55975451ee4f590df1ff06334665adf2`: backend compile/import checks, 32 backend tests, 221 frontend tests across 27 files and frontend production build.
+- Gate 1 work is being developed separately on `feat/gate-1-persistence`, based on the Gate 0 repair branch.
+- Gate 1 currently implements durable active identity selection, schema-v4 backfill, owner/status validation, archive/delete fallback, an active-identity API endpoint and Identity Manager status display.
+- Gate 1 still requires its own CI run. No passing result is claimed until that run completes.
+- Existing repository UI/modules vary in maturity; the existence of a file or page is not proof of end-to-end reliability.
+- PR #1 remains a draft. Main has not been changed or merged.
 
 ## Immediate next work
 
-1. Get Gate 0 CI green and repair any newly exposed backend regression-test failures.
-2. Review all changes in PR #1; resolve issues and update status docs with actual results.
-3. Complete active identity persistence and memory isolation.
-4. Build durable conversation and memory storage.
+1. Run Gate 1 CI and fix every regression it exposes.
+2. Review memory storage and retrieval to bind facts to identity boundaries.
+3. Add durable conversation/message persistence with owner and identity scope.
+4. Add database backup/restore and recovery tests.
 5. Only then expand voice, gesture and desktop execution beyond the existing bounded workflows.
