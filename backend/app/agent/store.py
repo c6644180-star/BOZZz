@@ -12,6 +12,10 @@ import json
 from app.db.database import Database
 
 
+class AgentIdempotencyConflict(ValueError):
+    """A client idempotency key was reused with a different request payload."""
+
+
 class AgentStore:
     def __init__(self, database: Database):
         self._db = database
@@ -217,9 +221,6 @@ class AgentStore:
                 )
         return len(rows)
 
-
-class AgentIdempotencyConflict(ValueError):
-    """A client idempotency key was reused with a different request payload."""
 
     def list_tasks(self, limit: int = 20) -> list[dict[str, Any]]:
         with self._db.read() as connection:
