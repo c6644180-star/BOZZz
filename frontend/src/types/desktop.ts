@@ -60,6 +60,10 @@ export type MiniAction =
   | { type: 'ptt-start' }
   | { type: 'ptt-end' }
 
+export type DesktopAppId = 'calculator' | 'notepad' | 'paint'
+
+export interface DesktopLaunchResult { ok: boolean; appId?: DesktopAppId; reason?: string }
+
 export interface DesktopBridge {
   isDesktop: true
   setMode: (mode: MiniMode) => void
