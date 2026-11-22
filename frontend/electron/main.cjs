@@ -209,6 +209,7 @@ function createMainWindow() {
     // A renderer crash ends its MediaStream. Clear the tray indicator rather
     // than leaving a stale microphone-active status behind.
     wakeWordActive = false
+    updateMainBackgroundActivity()
     refreshTrayStatus()
   })
   mainWindow.on('closed', () => {
