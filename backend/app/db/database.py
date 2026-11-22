@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Iterator
 import sqlite3
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS schema_meta (
@@ -172,6 +172,15 @@ CREATE TABLE IF NOT EXISTS identities (
 CREATE INDEX IF NOT EXISTS idx_identities_created ON identities(creation_timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_identities_name ON identities(name);
 
+-- One durable active identity per local owner. The FK clears stale selections
+-- when an identity is permanently deleted.
+CREATE TABLE IF NOT EXISTS active_identities (
+    owner_id TEXT PRIMARY KEY,
+    identity_id TEXT NOT NULL REFERENCES identities(id) ON DELETE CASCADE,
+    updated_at TEXT NOT NULL
+);
+
+
 CREATE TABLE IF NOT EXISTS preference_profiles (
     id TEXT PRIMARY KEY,
     owner_id TEXT NOT NULL,
@@ -253,6 +262,28 @@ class Database:
     def initialize(self) -> None:
         with self.transaction() as connection:
             connection.executescript(_SCHEMA)
+            # Backfill one deterministic active identity per owner for databases
+            # created before active selection was persisted.
+            connection.execute(
+                """
+                INSERT OR IGNORE INTO active_identities(owner_id, identity_id, updated_at)
+                SELECT i.owner_id, i.id, i.updated_timestamp
+                FROM identities i
+                WHERE i.status = 'active'
+                  AND NOT EXISTS (
+                    SELECT 1 FROM identities earlier
+                    WHERE earlier.owner_id = i.owner_id
+                      AND earlier.status = 'active'
+                      AND (
+                        earlier.creation_timestamp < i.creation_timestamp
+                        OR (
+                          earlier.creation_timestamp = i.creation_timestamp
+                          AND earlier.id < i.id
+                        )
+                      )
+                  )
+                """
+            )
             connection.execute(
                 "INSERT OR REPLACE INTO schema_meta(key, value) VALUES('version', ?)",
                 (str(SCHEMA_VERSION),),

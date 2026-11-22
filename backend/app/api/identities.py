@@ -169,6 +169,14 @@ def list_identities() -> dict[str, Any]:
         raise HTTPException(status_code=500, detail="An unexpected local error occurred.") from exc
 
 
+@router.get("/identities/active")
+def get_active_identity() -> dict[str, Any]:
+    """Return the locally persisted active identity, if one has been selected."""
+    service = _get_service()
+    identity = service.get_active_identity(get_owner_id())
+    return {"identity": identity}
+
+
 @router.get("/identities/{identity_id}")
 def get_identity(identity_id: str) -> dict[str, Any]:
     """Retrieve a specific identity by its stable ID.

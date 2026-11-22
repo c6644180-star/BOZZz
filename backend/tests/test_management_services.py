@@ -43,6 +43,58 @@ class ManagementServiceTests(unittest.TestCase):
         archived = self.identities.archive_identity(second.id, caller_owner_id="owner-a")
         self.assertEqual(archived["status"], "archived")
 
+    def test_active_identity_is_persisted_and_owner_scoped(self) -> None:
+        first = self.identities.create_identity(owner_id="owner-a", name="Default")
+        second = self.identities.create_identity(owner_id="owner-a", name="Research")
+        self.assertEqual(self.store.get_active_identity("owner-a")["id"], first.id)
+
+        switched = self.identities.switch_identity(second.id, caller_owner_id="owner-a")
+        self.assertEqual(switched["id"], second.id)
+
+        reopened = IntentStore(Database(Path(self.temp_dir.name) / "bozz-test.db"))
+        self.assertEqual(reopened.get_active_identity("owner-a")["id"], second.id)
+        with self.assertRaises(PermissionError):
+            self.identities.switch_identity(first.id, caller_owner_id="owner-b")
+
+    def test_archiving_active_identity_selects_another_active_identity(self) -> None:
+        first = self.identities.create_identity(owner_id="owner-a", name="Default")
+        second = self.identities.create_identity(owner_id="owner-a", name="Research")
+        self.identities.switch_identity(second.id, caller_owner_id="owner-a")
+        self.identities.archive_identity(second.id, caller_owner_id="owner-a")
+        self.assertEqual(self.store.get_active_identity("owner-a")["id"], first.id)
+
+    def test_deleting_active_identity_selects_another_active_identity(self) -> None:
+        first = self.identities.create_identity(owner_id="owner-a", name="Default")
+        second = self.identities.create_identity(owner_id="owner-a", name="Research")
+        self.identities.switch_identity(second.id, caller_owner_id="owner-a")
+        self.assertTrue(
+            self.identities.delete_identity(second.id, caller_owner_id="owner-a")
+        )
+        self.assertEqual(self.store.get_active_identity("owner-a")["id"], first.id)
+
+    def test_schema_v4_upgrade_creates_active_identity_storage(self) -> None:
+        database = Database(Path(self.temp_dir.name) / "migration.db")
+        database.initialize()
+        legacy_store = IntentStore(database)
+        legacy_identity = IdentityService(legacy_store).create_identity(
+            owner_id="legacy-owner", name="Legacy default"
+        )
+        with database.transaction() as connection:
+            connection.execute("DROP TABLE IF EXISTS active_identities")
+            connection.execute("UPDATE schema_meta SET value = '4' WHERE key = 'version'")
+        database.initialize()
+        self.assertEqual(database.schema_version(), 5)
+        with database.read() as connection:
+            table = connection.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='active_identities'"
+            ).fetchone()
+        self.assertIsNotNone(table)
+        upgraded_store = IntentStore(database)
+        self.assertEqual(
+            upgraded_store.get_active_identity("legacy-owner")["id"],
+            legacy_identity.id,
+        )
+
     def test_preference_profile_requires_owned_identity_and_persists(self) -> None:
         identity = self.identities.create_identity(owner_id="owner-a", name="Default")
         with self.assertRaises(PermissionError):
