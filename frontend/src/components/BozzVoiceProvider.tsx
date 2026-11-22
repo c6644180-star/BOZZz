@@ -1001,7 +1001,7 @@ export function BozzVoiceProvider({ children }: { children: ReactNode }) {
     orbState, caption, messages, conversationId: activeConversationId, settings, tts, ttsServer, voiceNote, mic, ai, clarification,
     setCaption, submit, stopVoice, toggleListening, pauseInteraction, updateSettings, resetConversation,
     pushToTalkStart, pushToTalkEnd, resolveClarification, openConversation,
-  }), [orbState, caption, messages, settings, tts, ttsServer, voiceNote, mic, ai, clarification, submit, stopVoice, toggleListening, pauseInteraction, updateSettings, resetConversation, pushToTalkStart, pushToTalkEnd, resolveClarification])
+  }), [orbState, caption, messages, activeConversationId, settings, tts, ttsServer, voiceNote, mic, ai, clarification, submit, stopVoice, toggleListening, pauseInteraction, updateSettings, resetConversation, pushToTalkStart, pushToTalkEnd, resolveClarification, openConversation])
 
   return <BozzVoiceContext.Provider value={value}>{children}</BozzVoiceContext.Provider>
 }
