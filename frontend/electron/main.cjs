@@ -13,6 +13,8 @@ const { clampToWorkArea, dockPoint, randomTarget, stepToward } = require('./mini
 const { computePauseReasons, shouldPauseAnimation } = require('./mini/pause.cjs')
 const { launchDesktopApp } = require('./desktopApps.cjs')
 const { snapshotManagedWindows, focusManagedWindow } = require('./windowRegistry.cjs')
+const { createExternalWindowRegistry } = require('./externalWindowRegistry.cjs')
+const externalWindowRegistry = createExternalWindowRegistry()
 
 const WINDOW_SIZES = {
   small: { width: 240, height: 250 },
@@ -448,6 +450,18 @@ ipcMain.handle('desktop:list-managed-windows', (event) => {
 ipcMain.handle('desktop:focus-managed-window', (event, id) => {
   if (!isFromMain(event)) return { ok: false, reason: 'Untrusted desktop request.' }
   return focusManagedWindow(id, { mainWindow, miniWindow })
+})
+
+// Discover and focus only a fixed set of supported Windows applications.
+// The renderer receives opaque one-use IDs, never native window handles or titles.
+ipcMain.handle('desktop:list-external-windows', (event) => {
+  if (!isFromMain(event)) return { ok: false, windows: [], reason: 'Untrusted desktop request.' }
+  return externalWindowRegistry.list()
+})
+
+ipcMain.handle('desktop:focus-external-window', (event, id) => {
+  if (!isFromMain(event)) return { ok: false, reason: 'Untrusted desktop request.' }
+  return externalWindowRegistry.focus(id)
 })
 
 // Launch only fixed applications, only after a direct request from the main renderer.
