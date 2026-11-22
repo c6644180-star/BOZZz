@@ -31,3 +31,11 @@ Run these checks only after updating to the commit containing this change:
 ## Evidence
 
 CI validates Electron syntax and the repository's automated test/build suites. It does not validate Windows notification-area behaviour, process lifetime, camera release or microphone privacy. Record those results only after running the checks on the target Windows PC.
+
+
+## Background-listening consent status
+
+- The Settings page now exposes a separate, opt-in preference for future local wake-word listening. It is off by default and can be revoked at any time.
+- This preference is not an active microphone grant. The current build has no installed local wake-word engine and does not start a background microphone listener.
+- A shared gate requires all of: wake-word mode, explicit BOZZ consent, an available local engine, and OS microphone permission. Regression tests cover each missing prerequisite.
+- The visible Settings microphone status distinguishes active voice input from the normal microphone-off state. Native tray status updates and OS permission handoff remain future work.
