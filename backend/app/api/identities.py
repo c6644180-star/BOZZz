@@ -173,10 +173,7 @@ def list_identities() -> dict[str, Any]:
 def get_active_identity() -> dict[str, Any]:
     """Return the locally persisted active identity, if one has been selected."""
     service = _get_service()
-    active = service._store.get_active_identity(get_owner_id())
-    if not active:
-        return {"identity": None}
-    identity = service.get_identity(active["id"])
+    identity = service.get_active_identity(get_owner_id())
     return {"identity": identity}
 
 
