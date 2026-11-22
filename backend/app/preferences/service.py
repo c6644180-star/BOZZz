@@ -302,11 +302,15 @@ class PreferenceService:
             return "No changes detected."
         return "; ".join(changes)
 
-    def apply_preference_change(self, profile_id: str) -> dict[str, Any]:
+    def apply_preference_change(
+        self, profile_id: str, caller_owner_id: str
+    ) -> dict[str, Any]:
         """Refuse application until proposals and approvals are persisted."""
         profile = self.get_preference_profile(profile_id)
         if profile is None:
             raise ValueError(f"Preference profile '{profile_id}' was not found.")
+        if profile["owner_id"] != caller_owner_id:
+            raise PermissionError("You do not own this preference profile.")
         raise PermissionError(
             "No persisted approved proposal exists. Preference changes cannot be applied yet."
         )
