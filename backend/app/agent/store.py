@@ -87,16 +87,32 @@ class AgentStore:
         payload["plan"] = json.loads(payload.pop("plan_json")) if payload.get("plan_json") else None
         payload["report"] = json.loads(payload.pop("report_json")) if payload.get("report_json") else None
         payload["dry_run"] = bool(payload.get("dry_run"))
-        payload["steps"] = [
-            {
-                "id": item["step_id"],
-                "status": item["status"],
-                "level": item["level"],
-                "detail": item["detail"],
-                "updated_at": item["updated_at"],
-            }
-            for item in steps
-        ]
+        step_state = {str(item["step_id"]): dict(item) for item in steps}
+        plan_steps = (payload["plan"] or {}).get("steps") or []
+        payload["steps"] = []
+        for plan_step in plan_steps:
+            step_id = str(plan_step.get("id") or "")
+            saved = step_state.get(step_id, {})
+            action = plan_step.get("action") or {}
+            payload["steps"].append({
+                "id": step_id,
+                "goal": str(plan_step.get("goal") or ""),
+                "application": str(plan_step.get("application") or ""),
+                "method": str(plan_step.get("method") or ""),
+                "tier": int(plan_step.get("tier") or 0),
+                "expected_result": str(plan_step.get("expected_result") or ""),
+                "dependencies": list(plan_step.get("dependencies") or []),
+                "action_id": str(action.get("type") or ""),
+                "verify": plan_step.get("verify"),
+                "status": str(saved.get("status") or "pending"),
+                "level": str(saved.get("level") or "none"),
+                "detail": str(saved.get("detail") or "Not started."),
+                "injection_warning": False,
+                "policy": None,
+                "verification": None,
+                "started_at": None,
+                "finished_at": None,
+            })
         return payload
 
 
@@ -163,7 +179,7 @@ class AgentStore:
         placeholders = ",".join("?" for _ in terminal)
         with self._db.transaction() as connection:
             rows = connection.execute(
-                f"SELECT id, task, dry_run FROM agent_tasks WHERE state NOT IN ({placeholders})",
+                f"SELECT id, task, dry_run, provider, model FROM agent_tasks WHERE state NOT IN ({placeholders})",
                 terminal,
             ).fetchall()
             for row in rows:
@@ -203,6 +219,8 @@ class AgentStore:
                     "steps_executed": sum(1 for step in steps if step["status"] != "interrupted"),
                     "injections_ignored": 0,
                     "dry_run": bool(row["dry_run"]),
+                    "provider": row["provider"] or "unknown",
+                    "model": row["model"] or "unknown",
                     "screenshots_shared": False,
                     "notes": ["Automatic recovery is disabled to prevent duplicate external actions."],
                 }
