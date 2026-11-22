@@ -68,6 +68,7 @@ export interface DesktopBridge {
   isDesktop: true
   setMode: (mode: MiniMode) => void
   getMode: () => Promise<MiniMode>
+  launchApp: (appId: DesktopAppId) => Promise<DesktopLaunchResult>
   openFull: () => void
   quit: () => void
   publishMiniState: (state: MiniState) => void
