@@ -140,6 +140,7 @@ function refreshTrayStatus() {
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: `Microphone: ${mic}`, enabled: false },
     { label: `Camera: ${camera}`, enabled: false },
+    { label: 'Stop camera & gestures', enabled: lastState.cameraActive, click: () => sendMain('hgi:stop-camera') },
     { type: 'separator' },
     { label: 'Open Calculator', click: () => launchDesktopApp('calculator') },
     { label: 'Open Notepad', click: () => launchDesktopApp('notepad') },
