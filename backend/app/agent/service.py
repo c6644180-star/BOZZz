@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any, Callable
 import hashlib
 import json
+import re
 import secrets
 import threading
 import time
@@ -40,7 +41,7 @@ from app.agent.schemas import (
     PlanStep,
 )
 from app.agent.simulated import SimulatedAdapter
-from app.agent.store import AgentStore
+from app.agent.store import AgentIdempotencyConflict as StoreIdempotencyConflict, AgentStore
 from app.core.config import Settings
 from app.core.logging import configure_logging
 from app.db.database import Database
@@ -64,6 +65,10 @@ class AgentNotFound(AgentError):
 
 
 class AgentApprovalError(AgentError):
+    pass
+
+
+class AgentIdempotencyConflict(AgentError):
     pass
 
 
@@ -141,6 +146,9 @@ class AgentService:
         self._planner = TaskPlanner(self.policy, provider)
         self._adapter_factory = adapter_factory
         self._logger = configure_logging(settings.log_level).getChild("agent")
+        recovered = self._store.recover_interrupted_tasks(_iso_now())
+        if recovered:
+            self._logger.warning("marked %d unfinished agent task(s) interrupted after backend restart; none were resumed", recovered)
         self._lock = threading.RLock()
         self._condition = threading.Condition(self._lock)
         self._tasks: dict[str, _Task] = {}
@@ -353,26 +361,81 @@ class AgentService:
         dry_run: bool | None = None,
         allow_screenshots: bool = False,
         screenshot_provider: str | None = None,
+        idempotency_key: str | None = None,
     ) -> dict[str, Any]:
+        clean_task = task.strip()
+        if not clean_task:
+            raise AgentError("The task cannot be empty.")
         with self._lock:
+            settings = self._settings
+            use_dry_run = settings.dry_run if dry_run is None else bool(dry_run)
+            clean_provider = (screenshot_provider or "").strip() or None
+            key = (idempotency_key or uuid.uuid4().hex).strip()
+            if not re.fullmatch(r"[A-Za-z0-9._:-]{16,128}", key):
+                raise AgentError("The idempotency key must contain 16–128 safe characters.")
+            request_payload = {
+                "task": clean_task,
+                "dry_run": use_dry_run,
+                "allow_screenshots": bool(allow_screenshots),
+                "screenshot_provider": clean_provider,
+            }
+            request_hash = hashlib.sha256(
+                json.dumps(request_payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
+            ).hexdigest()
+            try:
+                existing_id = self._store.get_idempotency(key, request_hash)
+            except StoreIdempotencyConflict as exc:
+                raise AgentIdempotencyConflict(str(exc)) from exc
+            if existing_id:
+                existing = self._tasks.get(existing_id)
+                if existing is not None:
+                    return self._task_view(existing)
+                stored = self._store.get_task(existing_id)
+                if stored is not None:
+                    return stored
+                raise AgentError("The idempotency record exists but its task record is missing; no task was replayed.")
+
+            # A duplicate request is returned above even if the agent has since
+            # been switched off. New work still requires the explicit enable gate.
             if not self._enabled:
                 raise AgentDisabled("The computer agent is off. Turn it on in Settings before starting a task.")
             if self._emergency_stopped:
                 raise AgentDisabled("Emergency stop is latched. Reset it before starting a task.")
-            settings = self._settings
             if allow_screenshots:
                 if not settings.screenshot_to_provider:
                     raise AgentError("Screenshot sharing is off in Settings; this task cannot enable it.")
-                if not (screenshot_provider or "").strip():
+                if not clean_provider:
                     raise AgentError("Name the AI provider before enabling screenshots for a task.")
-            use_dry_run = settings.dry_run if dry_run is None else bool(dry_run)
+
             provider_name = getattr(self._provider, "provider_name", None) if self._provider else None
             model_name = getattr(self._provider, "configured_model", None) if self._provider else None
             task_id = uuid.uuid4().hex
             created = _iso_now()
+            try:
+                reserved_id, is_new = self._store.reserve_task(
+                    idempotency_key=key,
+                    request_hash=request_hash,
+                    task_id=task_id,
+                    task=clean_task,
+                    dry_run=use_dry_run,
+                    provider=provider_name or "deterministic",
+                    model=model_name or "demo-planner",
+                    created_at=created,
+                )
+            except StoreIdempotencyConflict as exc:
+                raise AgentIdempotencyConflict(str(exc)) from exc
+            if not is_new:
+                existing = self._tasks.get(reserved_id)
+                if existing is not None:
+                    return self._task_view(existing)
+                stored = self._store.get_task(reserved_id)
+                if stored is not None:
+                    return stored
+                raise AgentError("The idempotent task reservation could not be recovered; no task was replayed.")
+
             record = _Task(
                 id=task_id,
-                task=task.strip(),
+                task=clean_task,
                 settings=settings,
                 dry_run=use_dry_run,
                 plan=None,
@@ -383,7 +446,7 @@ class AgentService:
                 provider=provider_name or "deterministic",
                 model=model_name or "demo-planner",
                 screenshots_allowed=bool(allow_screenshots),
-                screenshot_provider=(screenshot_provider or "").strip() or None,
+                screenshot_provider=clean_provider,
             )
             self._tasks[task_id] = record
             self._audit(
