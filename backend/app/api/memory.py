@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from functools import lru_cache
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
@@ -25,7 +24,6 @@ def _memory_scope(database: Database) -> tuple[str, str]:
     return owner_id, identity["id"] if identity else MemoryStore.LEGACY_IDENTITY
 
 
-@lru_cache(maxsize=1)
 def get_memory_service() -> MemoryService:
     settings = get_settings()
     database = Database(settings.database_path)
