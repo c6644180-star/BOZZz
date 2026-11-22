@@ -16,6 +16,7 @@ let socket: WebSocket | null = null
 let frame = new Int16Array(1280)
 let frameOffset = 0
 let stopping = false
+let generation = 0
 
 function publish(next: WakeWordRuntimeState) {
   state = next
@@ -97,6 +98,7 @@ async function releaseAudio(): Promise<void> {
 }
 
 async function stopInternal(next: WakeWordRuntimeState, notifyServer = true): Promise<void> {
+  generation += 1
   if (stopping) return
   stopping = true
   const ws = socket
@@ -131,6 +133,10 @@ export async function startWakeWordListening(): Promise<void> {
   if (!navigator.mediaDevices?.getUserMedia) {
     throw new Error('This device does not provide a microphone capture API.')
   }
+  const startGeneration = ++generation
+  const assertCurrent = () => {
+    if (startGeneration !== generation) throw new Error('Wake-word start was cancelled. The microphone remains off.')
+  }
   publish({ phase: 'starting', detail: 'Loading the validated local model. The microphone is still off.' })
 
   try {
@@ -143,15 +149,18 @@ export async function startWakeWordListening(): Promise<void> {
     })
     ws.send(JSON.stringify({ type: 'start', consent: true }))
     await waitForServerReady(ws)
+    assertCurrent()
 
     // Ask the OS for microphone access only after the local model is ready.
     stream = await navigator.mediaDevices.getUserMedia({
       audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       video: false,
     })
+    assertCurrent()
     const AudioContextConstructor = window.AudioContext
     context = new AudioContextConstructor({ sampleRate: 16000 })
     await context.resume()
+    assertCurrent()
     if (context.sampleRate !== 16000) {
       throw new Error(`The audio device opened at ${context.sampleRate} Hz; BOZZ requires 16 kHz input for this model.`)
     }
@@ -216,10 +225,14 @@ export async function startWakeWordListening(): Promise<void> {
     if (!background.ok) throw new Error(background.reason ?? 'Could not enable visible tray monitoring.')
     publish({ phase: 'listening', detail: 'Local wake-word listening is active. Audio is processed on this PC and is not saved.' })
   } catch (caught) {
-    await stopInternal({
-      phase: 'error',
-      detail: caught instanceof Error ? caught.message : 'Wake-word listening could not start.',
-    })
+    if (startGeneration === generation) {
+      await stopInternal({
+        phase: 'error',
+        detail: caught instanceof Error ? caught.message : 'Wake-word listening could not start.',
+      })
+    } else {
+      await releaseAudio()
+    }
     throw caught
   }
 }
