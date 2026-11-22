@@ -197,6 +197,10 @@ export interface AgentPendingApproval {
   tier: number
   expires_in_ms: number
   expires_at: string
+  action_preview: {
+    action_id: string
+    parameters: Record<string, string>
+  }
 }
 
 export interface AgentReportStep {
