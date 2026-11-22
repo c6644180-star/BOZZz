@@ -152,6 +152,7 @@ export function AgentPanel() {
     watch,
     refresh,
     setEnabled,
+    patchSettings,
     resetEmergency,
     startTask,
     selectTask,
@@ -572,6 +573,42 @@ export function AgentPanel() {
             ))}
           </ul>
         )}
+      </section>
+
+      <section className="agent-section" aria-label="Adapter permission scopes">
+        <h3><ShieldCheck /> Adapter permission scopes</h3>
+        <label className={`agent-toggle ${status?.adapters.files.available ? '' : 'is-disabled'}`}>
+          <span>
+            Browser file transfers
+            <small>
+              {status?.adapters.files.detail ?? 'Browser adapter status is unavailable.'}
+              {' '}Each download or upload still requires its own plan and step approval.
+            </small>
+          </span>
+          <input
+            type="checkbox"
+            checked={settings?.file_access_enabled === true}
+            onChange={(event) => {
+              const enabled = event.target.checked
+              if (enabled && !window.confirm(
+                'Allow BOZZ browser tasks to download or upload files? Each file action will still require a separate step approval.',
+              )) return
+              void patchSettings({ file_access_enabled: enabled }, enabled)
+            }}
+            disabled={!status?.adapters.files.available || busy !== null || active}
+          />
+        </label>
+        <div className="agent-scope-unavailable">
+          <strong>App control</strong>
+          <small>{status?.adapters.apps.detail ?? 'No app adapter is available yet. App actions remain blocked.'}</small>
+        </div>
+        <div className="agent-scope-unavailable">
+          <strong>Device / HID control</strong>
+          <small>{status?.adapters.devices.detail ?? 'No device adapter is available yet. Device actions remain blocked.'}</small>
+        </div>
+        <p className="agent-note">
+          These are separate master permissions. Turning one on never skips the task-plan approval or per-action approval gates.
+        </p>
       </section>
 
       <section className="agent-section">
