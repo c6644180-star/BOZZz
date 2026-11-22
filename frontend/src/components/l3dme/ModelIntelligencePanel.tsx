@@ -298,6 +298,8 @@ export function ModelIntelligencePanel(props: ModelIntelligencePanelProps) {
         `Suggest a short, useful label for parts with generic names. You may be wrong; say so when evidence is weak. ` +
         `Reply with plain lines "nodePath: label — reason".\n\n${payloadText}`,
         null,
+        undefined,
+        false,
       )
       setAiAnswer(reply.reply)
     } catch (caught) {
