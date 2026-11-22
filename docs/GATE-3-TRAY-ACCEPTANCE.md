@@ -9,7 +9,7 @@
 - The wake-word engine is reported unavailable until the user supplies the three local ONNX assets and installs the optional runtime.
 - The backend status endpoint is read-only and does not load the model. Explicit validation loads the CPU inference pipeline but does not open an audio device.
 - A frame-only local detector accepts mono 16 kHz signed 16-bit PCM frames (1,280 samples / 80 ms). It only returns scores; it cannot open a microphone or dispatch computer actions.
-- The Wake-Word Model Lab CLI evaluates labelled local WAV clips and reports positive-clip recall and negative false activations per audio hour. It never records, uploads, or automatically downloads audio/model files.
+- The Wake-Word Model Lab CLI evaluates labelled local WAV clips and reports positive-clip recall, negative false activations per audio hour, inference wall-time/real-time factor, and Python-traced peak allocations. The memory metric excludes native ONNX Runtime allocations and is not total process RAM. It never records, uploads, or automatically downloads audio/model files.
 
 ## Wake-Word Model Lab
 
