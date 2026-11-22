@@ -75,6 +75,16 @@ class ConversationStoreTests(unittest.TestCase):
             ).fetchone()[0]
         self.assertEqual(count, 0)
 
+    def test_default_scope_isolated_when_no_identity_is_selected(self) -> None:
+        default_scope = ConversationStore(self.database, "owner-without-identity", "__default__")
+        conversation = default_scope.create("Unassigned local chat")
+        default_scope.append_exchange(conversation["id"], "hello", "hello back")
+
+        another_owner = ConversationStore(self.database, "another-owner", "__default__")
+        self.assertEqual(another_owner.list(), [])
+        reopened = ConversationStore(Database(self.database_path), "owner-without-identity", "__default__")
+        self.assertEqual(reopened.get(conversation["id"])["messages"][0]["content"], "hello")
+
     def test_message_size_and_empty_content_are_rejected(self) -> None:
         store = ConversationStore(self.database, "owner-a", self.first.id)
         conversation = store.create()
