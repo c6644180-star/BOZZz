@@ -33,6 +33,9 @@ export interface AgentSettings {
   approval_mode: AgentApprovalMode
   ask_new_domain: boolean
   screenshot_to_provider: boolean
+  file_access_enabled: boolean
+  app_control_enabled: boolean
+  device_control_enabled: boolean
   dry_run: boolean
   max_steps: number
   max_seconds: number
@@ -75,6 +78,9 @@ export interface AgentAdapters {
   official_api: AgentAdapterInfo
   accessibility: AgentAdapterInfo
   desktop: AgentAdapterInfo
+  files: AgentAdapterInfo
+  apps: AgentAdapterInfo
+  devices: AgentAdapterInfo
 }
 
 export interface AgentCapabilityProfile {
