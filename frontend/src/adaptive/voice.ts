@@ -44,3 +44,21 @@ export function shouldSuspendOnLoad(mode: VoiceMode, sustainedHigh: boolean): bo
 
 export const HIGH_LOAD_MESSAGE =
   'Main-thread load stayed high, so wake-word listening was suspended. BOZZ switched to push-to-talk. Two speech models never run at once.'
+
+
+/**
+ * A background listener may start only when all four independent conditions
+ * are true. Consent is a user preference, not a substitute for OS permission
+ * or an installed local wake-word engine.
+ */
+export function canStartBackgroundListening(input: {
+  mode: VoiceMode
+  consentGranted: boolean
+  engineAvailable: boolean
+  osPermissionGranted: boolean
+}): boolean {
+  return input.mode === 'wake-word' &&
+    input.consentGranted &&
+    input.engineAvailable &&
+    input.osPermissionGranted
+}
