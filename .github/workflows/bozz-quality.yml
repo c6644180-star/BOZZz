@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - feat/gate-1-persistence
+      - feat/gate-2-action-approval
   workflow_dispatch:
 
 permissions:
