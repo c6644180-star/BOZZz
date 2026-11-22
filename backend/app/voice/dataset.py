@@ -125,7 +125,7 @@ def prepare_dataset(
         target = output / f"{split_name}.jsonl"
         # Evaluation/training consumers receive only path and label; provenance stays in the audit report.
         target.write_text(
-            "".join(json.dumps({"path": row["path"], "label": row["label"]}, ensure_ascii=False) + "\\n" for row in split),
+            "".join(json.dumps({"path": row["path"], "label": row["label"]}, ensure_ascii=False) + "\n" for row in split),
             encoding="utf-8",
         )
         summaries[split_name] = {
@@ -154,5 +154,5 @@ def prepare_dataset(
         },
         "warning": "This validates and partitions data only. It does not train, export, certify, or accuracy-verify a BOZZ wake-word model.",
     }
-    (output / "dataset-report.json").write_text(json.dumps(report, indent=2) + "\\n", encoding="utf-8")
+    (output / "dataset-report.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     return report
