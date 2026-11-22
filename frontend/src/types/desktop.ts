@@ -64,11 +64,16 @@ export type DesktopAppId = 'calculator' | 'notepad' | 'paint'
 
 export interface DesktopLaunchResult { ok: boolean; appId?: DesktopAppId; reason?: string }
 
+export interface ManagedDesktopWindow { id: 'main' | 'mini'; title: string; visible: boolean; focused: boolean; minimized: boolean }
+export interface ManagedWindowFocusResult { ok: boolean; id?: 'main' | 'mini'; reason?: string }
+
 export interface DesktopBridge {
   isDesktop: true
   setMode: (mode: MiniMode) => void
   getMode: () => Promise<MiniMode>
   launchApp: (appId: DesktopAppId) => Promise<DesktopLaunchResult>
+  listManagedWindows: () => Promise<ManagedDesktopWindow[]>
+  focusManagedWindow: (id: 'main' | 'mini') => Promise<ManagedWindowFocusResult>
   openFull: () => void
   quit: () => void
   publishMiniState: (state: MiniState) => void
