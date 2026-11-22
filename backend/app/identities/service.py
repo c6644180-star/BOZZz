@@ -107,6 +107,11 @@ class IdentityService:
 
     # ----------------------------------------------------------- read
 
+    def get_active_identity(self, owner_id: str) -> dict[str, Any] | None:
+        """Return the persisted active identity for one owner."""
+        active = self._store.get_active_identity(owner_id)
+        return self.get_identity(active["id"]) if active else None
+
     def get_identity(self, identity_id: str) -> dict[str, Any] | None:
         """Retrieve an identity by its stable ID.
 
