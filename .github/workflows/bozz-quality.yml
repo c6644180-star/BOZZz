@@ -5,6 +5,7 @@ on:
     branches: [main, feat/gate-1-memory-conversations, feat/gate-1-conversations]
   push:
     branches:
+      - main
       - feat/gate-1-persistence
       - feat/gate-2-action-approval
       - feat/gate-3-voice-gesture
