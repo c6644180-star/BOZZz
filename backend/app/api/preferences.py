@@ -282,7 +282,7 @@ def apply_preference_change(profile_id: str) -> dict[str, Any]:
     """
     try:
         service = _get_service()
-        updated = service.apply_preference_change(profile_id)
+        updated = service.apply_preference_change(profile_id, caller_owner_id=get_owner_id())
         return {
             "id": updated["id"],
             "name": updated["name"],
