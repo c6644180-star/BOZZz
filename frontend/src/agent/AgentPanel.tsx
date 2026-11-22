@@ -89,6 +89,13 @@ function PendingApprovalCard({
       </div>
       <p className="agent-approval__label">{approval.label}</p>
       <p className="agent-note">{approval.detail}</p>
+      <div className="agent-approval__preview">
+        <strong>Exact action awaiting approval</strong>
+        <code>{approval.action_preview.action_id}</code>
+        {Object.entries(approval.action_preview.parameters).map(([key, value]) => (
+          <p key={key}><span>{key}: </span><code>{value}</code></p>
+        ))}
+      </div>
       <div className="agent-actions">
         <button type="button" className="primary-action" onClick={() => onResolve(true)} disabled={busy || expired}>
           <ShieldCheck /> Approve step
