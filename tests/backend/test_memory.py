@@ -104,6 +104,53 @@ class MemoryServiceTests(unittest.TestCase):
         self.service.clear(True)
         self.assertIsNone(self.service.context_message())
 
+
+    def test_memory_isolated_by_owner_and_identity(self):
+        first = MemoryService(
+            MemoryStore(Database(Path(self.temp.name) / "bozz.sqlite3"), "owner-a", "identity-a"),
+            self.intents,
+        )
+        second = MemoryService(
+            MemoryStore(Database(Path(self.temp.name) / "bozz.sqlite3"), "owner-a", "identity-b"),
+            self.intents,
+        )
+        other_owner = MemoryService(
+            MemoryStore(Database(Path(self.temp.name) / "bozz.sqlite3"), "owner-b", "identity-a"),
+            self.intents,
+        )
+        fact = first.add_fact("Private identity A fact")
+        first.set_use_in_chat(True)
+        self.assertEqual(first.count(), 1)
+        self.assertEqual(second.count(), 0)
+        self.assertEqual(other_owner.count(), 0)
+        self.assertIsNone(second.context_message())
+        self.assertFalse(second._store.delete_fact(fact["id"]))
+        self.assertEqual(first.count(), 1)
+        second.set_use_in_chat(True)
+        self.assertIsNone(second.context_message())
+
+    def test_legacy_memory_and_setting_migrate_to_first_identity(self):
+        database = Database(Path(self.temp.name) / "legacy.sqlite3")
+        with database.transaction() as connection:
+            connection.executescript("""
+                CREATE TABLE memory_facts (
+                    id TEXT PRIMARY KEY, text TEXT NOT NULL, source TEXT NOT NULL,
+                    created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+                );
+                INSERT INTO memory_facts VALUES
+                    ('legacy-1', 'Legacy private note', 'user', '2026-01-01', '2026-01-01');
+                CREATE TABLE memory_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+                INSERT INTO memory_settings VALUES ('use_in_chat', '1');
+            """)
+        migrated = MemoryStore(database, "owner-a", "identity-first")
+        service = MemoryService(migrated, IntentStore(database))
+        self.assertEqual(service.count(), 1)
+        self.assertEqual(service.list_facts()[0]["text"], "Legacy private note")
+        self.assertTrue(service.use_in_chat())
+        other = MemoryService(MemoryStore(database, "owner-a", "identity-second"), IntentStore(database))
+        self.assertEqual(other.count(), 0)
+        self.assertFalse(other.use_in_chat())
+
     def test_export_shape(self):
         self.service.add_fact("Exportable item")
         data = self.service.export()
