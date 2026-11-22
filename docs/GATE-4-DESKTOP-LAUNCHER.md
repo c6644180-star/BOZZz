@@ -73,6 +73,15 @@ The Electron preload exposes only a boolean background-activity request and a st
 
 The camera is intentionally still active while hidden after the user has started it. The tray stop item is the quick off switch; quitting BOZZ also ends the stream. No hidden startup, wake-word listening, recording, or automatic gesture execution is introduced by this gate.
 
+
+## Gate 7 — consent-controlled local wake-word stream
+
+The Settings wake-word panel now includes a real local detector stream, gated by the explicit background-listening preference, a separate Start click/confirmation, a successfully loaded local model, and OS microphone permission. The backend is loaded before the microphone is requested. A loopback-only WebSocket accepts only the configured local renderer origins and exact 80 ms mono int16 frames.
+
+The Electron main process exposes only narrow wake-word activity, show-main, and stop-listener IPC methods. While listening, the tray reports **Microphone: ACTIVE**, offers **Stop wake-word listener**, and the BOZZ main renderer runs without background throttling. A renderer crash clears the tray indicator. Detection closes the stream and microphone, restores BOZZ, and notifies the user; it does not automatically record a command or execute an action.
+
+Audio is processed by the local backend in memory. No audio is written to disk or uploaded. The experimental threshold is 0.5 with two consecutive qualifying frames; false activations and misses remain possible. See `WAKE-WORD-FOUNDATION.md` for the complete privacy model and manual acceptance steps.
+
 ## Next increments
 
 1. Add narrow app-specific keyboard/mouse actions only after a separate threat-model review, with per-action approval, visible execution state, cancellation, and verification.
