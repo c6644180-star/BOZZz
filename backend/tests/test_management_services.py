@@ -63,6 +63,15 @@ class ManagementServiceTests(unittest.TestCase):
         self.identities.archive_identity(second.id, caller_owner_id="owner-a")
         self.assertEqual(self.store.get_active_identity("owner-a")["id"], first.id)
 
+    def test_deleting_active_identity_selects_another_active_identity(self) -> None:
+        first = self.identities.create_identity(owner_id="owner-a", name="Default")
+        second = self.identities.create_identity(owner_id="owner-a", name="Research")
+        self.identities.switch_identity(second.id, caller_owner_id="owner-a")
+        self.assertTrue(
+            self.identities.delete_identity(second.id, caller_owner_id="owner-a")
+        )
+        self.assertEqual(self.store.get_active_identity("owner-a")["id"], first.id)
+
     def test_schema_v4_upgrade_creates_active_identity_storage(self) -> None:
         database = Database(Path(self.temp_dir.name) / "migration.db")
         database.initialize()
