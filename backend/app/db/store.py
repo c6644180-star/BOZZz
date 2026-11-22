@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import uuid
 from typing import Any, TypeVar
 
 from app.db.database import Database
@@ -61,6 +62,11 @@ class IntentStore:
     def __init__(self, database: Database):
         self._db = database
         self._db.initialize()
+
+    @staticmethod
+    def _generate_id() -> str:
+        """Generate a compact, non-PII identifier for local records."""
+        return uuid.uuid4().hex[:16]
 
     def create_intent(self, record: IntentRecord) -> None:
         with self._db.transaction() as connection:
