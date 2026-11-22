@@ -267,7 +267,7 @@ def edit_bid(bid_id: str, payload: EditBidRequest) -> dict[str, Any]:
 @router.get("/bids/search/description")
 def search_bids_by_description(
     query: str = Query(min_length=1, max_length=500),
- ) -> dict[str, Any]:
+) -> dict[str, Any]:
     """Search BIDs by description or title.
 
     - Searches both title and description fields.
