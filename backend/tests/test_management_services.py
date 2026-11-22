@@ -66,6 +66,10 @@ class ManagementServiceTests(unittest.TestCase):
     def test_schema_v4_upgrade_creates_active_identity_storage(self) -> None:
         database = Database(Path(self.temp_dir.name) / "migration.db")
         database.initialize()
+        legacy_store = IntentStore(database)
+        legacy_identity = IdentityService(legacy_store).create_identity(
+            owner_id="legacy-owner", name="Legacy default"
+        )
         with database.transaction() as connection:
             connection.execute("DROP TABLE IF EXISTS active_identities")
             connection.execute("UPDATE schema_meta SET value = '4' WHERE key = 'version'")
@@ -76,6 +80,11 @@ class ManagementServiceTests(unittest.TestCase):
                 "SELECT name FROM sqlite_master WHERE type='table' AND name='active_identities'"
             ).fetchone()
         self.assertIsNotNone(table)
+        upgraded_store = IntentStore(database)
+        self.assertEqual(
+            upgraded_store.get_active_identity("legacy-owner")["id"],
+            legacy_identity.id,
+        )
 
     def test_preference_profile_requires_owned_identity_and_persists(self) -> None:
         identity = self.identities.create_identity(owner_id="owner-a", name="Default")
