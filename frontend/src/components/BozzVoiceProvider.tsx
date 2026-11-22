@@ -20,8 +20,8 @@ import { HIGH_LOAD_MESSAGE, resolveVoiceMode } from '../adaptive/voice'
 import { WAKE_WORD_NOT_INSTALLED } from '../adaptive/wakeWord'
 import { playSpeech, stopSpeech as stopPlayback, unlockAudio } from '../services/voiceAudio'
 import { fetchTTSStatus, requestSpeech } from '../services/tts'
-import { loadConversation, loadHistory, loadSettings, addHistoryEntry, patchHistoryEntry, saveConversation, saveSettings, uid } from '../services/localStore'
-import { fetchAIStatus, requestChat } from '../services/backend'
+import { loadHistory, loadSettings, addHistoryEntry, patchHistoryEntry, saveSettings, uid } from '../services/localStore'
+import { fetchAIStatus, fetchConversation, requestChat } from '../services/backend'
 import { desktopBridge } from '../services/desktopBridge'
 import { isMiniModeActive } from '../services/desktopMode'
 import { pushToast } from '../services/toast'
@@ -66,7 +66,7 @@ const unavailableAI: AIProviderStatus = {
 export function BozzVoiceProvider({ children }: { children: ReactNode }) {
   const [orbState, setOrbState] = useState<OrbState>('idle')
   const [caption, setCaption] = useState(IdleCaption)
-  const [messages, setMessages] = useState<ChatMessage[]>(() => loadConversation())
+  const [messages, setMessages] = useState<ChatMessage[]>([])
   const [settings, setSettings] = useState<VoiceSettings>(() => loadSettings())
   const [listening, setListening] = useState(false)
   const [micReason, setMicReason] = useState<string | null>(null)
@@ -82,6 +82,7 @@ export function BozzVoiceProvider({ children }: { children: ReactNode }) {
   const chatAbortRef = useRef<AbortController | null>(null)
   const ttsAbortRef = useRef<AbortController | null>(null)
   const activeHistory = useRef<string | null>(null)
+  const conversationIdRef = useRef<string | null>(typeof window !== 'undefined' ? window.localStorage.getItem('bozz.activeConversationId') : null)
   const thinkTimer = useRef<number | null>(null)
   const errorTimer = useRef<number | null>(null)
   const dictationRef = useRef(false)
@@ -129,7 +130,41 @@ export function BozzVoiceProvider({ children }: { children: ReactNode }) {
       .forEach((entry) => patchHistoryEntry(entry.id, { status: 'cancelled', updatedAt: Date.now() }))
   }, [])
 
-  useEffect(() => { saveConversation(messages) }, [messages])
+  useEffect(() => {
+    let active = true
+    const savedId = conversationIdRef.current
+    if (savedId) {
+      void fetchConversation(savedId).then(({ conversation }) => {
+        if (!active) return
+        setMessages(conversation.messages.map((item) => ({
+          id: item.id,
+          from: item.role === 'assistant' ? 'bozz' : 'user',
+          text: item.content,
+          createdAt: Date.parse(item.created_at),
+          local: true,
+        })))
+      }).catch(() => {
+        if (!active) return
+        conversationIdRef.current = null
+        window.localStorage.removeItem('bozz.activeConversationId')
+        setMessages([])
+      })
+    }
+    const onIdentityChanged = () => {
+      active = false
+      chatAbortRef.current?.abort()
+      chatAbortRef.current = null
+      conversationIdRef.current = null
+      window.localStorage.removeItem('bozz.activeConversationId')
+      setMessages([])
+      setCaption('Identity changed. Starting a separate conversation space.')
+    }
+    window.addEventListener('bozz:identity-changed', onIdentityChanged)
+    return () => {
+      active = false
+      window.removeEventListener('bozz:identity-changed', onIdentityChanged)
+    }
+  }, [])
 
   useEffect(() => {
     let disposed = false
@@ -629,7 +664,6 @@ export function BozzVoiceProvider({ children }: { children: ReactNode }) {
     const controller = new AbortController()
     chatAbortRef.current = controller
     const message = { id: uid(), from: 'user' as const, text: command, createdAt: Date.now(), local: true }
-    const history = messages.slice(-12)
     const historyId = uid()
     addHistoryEntry({
       id: historyId,
@@ -644,8 +678,10 @@ export function BozzVoiceProvider({ children }: { children: ReactNode }) {
     setMessages((prev) => [...prev, message])
     setOrbState('thinking')
     setCaption('Thinking with the local AI provider…')
-    void requestChat(command, history, controller.signal).then(
-      (reply) => {
+    void requestChat(command, conversationIdRef.current, controller.signal).then(
+      ({ reply, conversationId }) => {
+        conversationIdRef.current = conversationId
+        window.localStorage.setItem('bozz.activeConversationId', conversationId)
         if (chatAbortRef.current !== controller) return
         chatAbortRef.current = null
         finishHistory('done')
@@ -665,7 +701,6 @@ export function BozzVoiceProvider({ children }: { children: ReactNode }) {
     finishHistory,
     handleDesktopCommand,
     isDesktopPhrase,
-    messages,
     resolveVoiceApproval,
     say,
     showOrbError,
