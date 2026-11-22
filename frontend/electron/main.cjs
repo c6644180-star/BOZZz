@@ -12,6 +12,7 @@ const {
 const { clampToWorkArea, dockPoint, randomTarget, stepToward } = require('./mini/wander.cjs')
 const { computePauseReasons, shouldPauseAnimation } = require('./mini/pause.cjs')
 const { launchDesktopApp } = require('./desktopApps.cjs')
+const { snapshotManagedWindows, focusManagedWindow } = require('./windowRegistry.cjs')
 
 const WINDOW_SIZES = {
   small: { width: 240, height: 250 },
@@ -436,6 +437,17 @@ ipcMain.on('mini:set-mode', (event, mode) => {
   if (!isFromMain(event) || !isValidMode(mode)) return
   if (mode === 'mini') enterMini()
   else exitMini()
+})
+
+// Expose only BOZZ-owned windows. Other applications are deliberately out of scope.
+ipcMain.handle('desktop:list-managed-windows', (event) => {
+  if (!isFromMain(event)) return []
+  return snapshotManagedWindows({ mainWindow, miniWindow })
+})
+
+ipcMain.handle('desktop:focus-managed-window', (event, id) => {
+  if (!isFromMain(event)) return { ok: false, reason: 'Untrusted desktop request.' }
+  return focusManagedWindow(id, { mainWindow, miniWindow })
 })
 
 // Launch only fixed applications, only after a direct request from the main renderer.
