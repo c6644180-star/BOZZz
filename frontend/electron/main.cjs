@@ -203,7 +203,9 @@ function createMainWindow() {
     event.preventDefault()
     if (modeState.mode === 'mini') exitMini()
     mainWindow?.hide()
-    tray?.displayBalloon?.({ title: 'BOZZ is still running', content: 'BOZZ is idle. Microphone and camera remain off until you enable them.' })
+    const micStatus = lastState.listening || wakeWordActive ? 'ACTIVE' : 'off'
+    const cameraStatus = lastState.cameraActive || gestureCameraActive ? 'ACTIVE' : 'off'
+    tray?.displayBalloon?.({ title: 'BOZZ is still running', content: `BOZZ is in the tray. Microphone: ${micStatus}. Camera: ${cameraStatus}. Use the tray menu to stop active features.` })
   })
   mainWindow.webContents.on('render-process-gone', () => {
     // A renderer crash ends its MediaStream. Clear the tray indicator rather
