@@ -147,8 +147,13 @@ class DatabaseBackupService:
                 self._validate(temporary_path)
 
                 # Checkpoint committed WAL pages before replacing the live database.
-                with sqlite3.connect(str(self.database.path), timeout=15.0) as current:
-                    current.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                current = sqlite3.connect(str(self.database.path), timeout=15.0)
+                try:
+                    checkpoint = current.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchone()
+                    if checkpoint and checkpoint[0] != 0:
+                        raise RuntimeError("The database WAL could not be checkpointed; restore was cancelled.")
+                finally:
+                    current.close()
 
                 wal_path = Path(f"{self.database.path}-wal")
                 shm_path = Path(f"{self.database.path}-shm")
