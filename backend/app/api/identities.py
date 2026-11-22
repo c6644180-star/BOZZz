@@ -42,8 +42,8 @@ def _get_service() -> IdentityService:
 
 def _require_owned_identity(service: IdentityService, identity_id: str) -> None:
     """Reject identity operations outside the current local user's ownership."""
-    record = service._store._require_identity(identity_id)
-    if record.owner_id != get_owner_id():
+    record = service._require_identity(identity_id)
+    if record["owner_id"] != get_owner_id():
         raise PermissionError("You do not own this identity.")
 
 
