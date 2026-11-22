@@ -3,6 +3,8 @@ from __future__ import annotations
 import array
 import json
 import sys
+import time
+import tracemalloc
 import wave
 from pathlib import Path
 from typing import Any, Callable
@@ -45,8 +47,14 @@ def evaluate_manifest(
     if detector_factory is None:
         from app.voice.wake_word import LocalWakeWordDetector
         detector_factory = LocalWakeWordDetector.load
+    started_at = time.perf_counter()
+    trace_started_here = not tracemalloc.is_tracing()
+    if trace_started_here:
+        tracemalloc.start()
     detector = detector_factory()
 
+    total_audio_seconds = 0.0
+    peak_python_memory_bytes: int | None = None
     positive_clips = positive_detected = negative_clips = 0
     negative_duration_seconds = 0.0
     false_activations = 0
@@ -72,6 +80,7 @@ def evaluate_manifest(
                     )
                 frame_count = wav.getnframes()
                 duration = frame_count / 16000.0
+                total_audio_seconds += duration
                 if frame_count < 1280:
                     raise ValueError(f"{audio_path.name} is shorter than one 80 ms detector frame.")
 
@@ -133,7 +142,11 @@ def evaluate_manifest(
         stop = getattr(detector, "stop", None)
         if callable(stop):
             stop()
+        if trace_started_here:
+            _, peak_python_memory_bytes = tracemalloc.get_traced_memory()
+            tracemalloc.stop()
 
+    elapsed_seconds = time.perf_counter() - started_at
     negative_hours = negative_duration_seconds / 3600.0
     return {
         "status": "evaluation_complete",
@@ -142,6 +155,11 @@ def evaluate_manifest(
         "audio_format": "mono 16-bit PCM WAV, 16 kHz",
         "microphone_opened": False,
         "audio_uploaded": False,
+        "evaluation_wall_seconds": round(elapsed_seconds, 4),
+        "audio_seconds_evaluated": round(total_audio_seconds, 3),
+        "real_time_factor": round(elapsed_seconds / total_audio_seconds, 6) if total_audio_seconds else None,
+        "peak_python_memory_bytes": peak_python_memory_bytes,
+        "memory_metric_note": "Python traced allocations only; native ONNX Runtime and total process memory are not included.",
         "positive_clips": positive_clips,
         "positive_detected": positive_detected,
         "positive_recall": round(positive_detected / positive_clips, 6) if positive_clips else None,
