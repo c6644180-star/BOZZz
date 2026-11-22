@@ -133,6 +133,8 @@ def create_preference_profile(payload: CreatePreferenceProfileRequest) -> dict[s
         }
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
     except PermissionDenied as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     except Exception as exc:
