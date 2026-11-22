@@ -13,6 +13,7 @@ import { ReliabilitySettings } from '../components/settings/ReliabilitySettings'
 import { DesktopAppLauncher } from '../components/settings/DesktopAppLauncher'
 import { ManagedWindowPanel } from '../components/settings/ManagedWindowPanel'
 import { ExternalApplicationPanel } from '../components/settings/ExternalApplicationPanel'
+import { WakeWordDiagnostics } from '../components/settings/WakeWordDiagnostics'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { ConnStatus, VoiceMode } from '../types/bozz'
@@ -122,6 +123,7 @@ export default function SettingsPage() {
         <DesktopAppLauncher />
         <ManagedWindowPanel />
         <ExternalApplicationPanel />
+        <WakeWordDiagnostics />
         <div className="status-rows">
           <p><strong>Backend (/api/health):</strong> {backend === 'online' ? 'online' : backend === 'checking' ? 'checking…' : 'offline — no backend connection'}</p>
           <p><strong>Local AI:</strong> {ai.available ? `${ai.provider} · ${ai.configuredModel}` : `unavailable — ${ai.detail ?? 'checking…'}`}</p>
