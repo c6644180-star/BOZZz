@@ -172,6 +172,9 @@ class AgentService:
             approval_mode=str(defaults.get("approval_mode") or "every_step"),
             ask_new_domain=bool(defaults.get("ask_new_domain", True)),
             screenshot_to_provider=bool(defaults.get("screenshot_to_provider", False)),
+            file_access_enabled=bool(defaults.get("file_access_enabled", False)),
+            app_control_enabled=bool(defaults.get("app_control_enabled", False)),
+            device_control_enabled=bool(defaults.get("device_control_enabled", False)),
             dry_run=bool(defaults.get("dry_run", True)),
             max_steps=int(defaults.get("max_steps") or 25),
             max_seconds=int(defaults.get("max_seconds") or 300),
@@ -196,6 +199,9 @@ class AgentService:
                 approval_mode=str(payload.get("approval_mode") or base.approval_mode),
                 ask_new_domain=bool(payload.get("ask_new_domain", base.ask_new_domain)),
                 screenshot_to_provider=bool(payload.get("screenshot_to_provider", base.screenshot_to_provider)),
+                file_access_enabled=bool(payload.get("file_access_enabled", base.file_access_enabled)),
+                app_control_enabled=bool(payload.get("app_control_enabled", base.app_control_enabled)),
+                device_control_enabled=bool(payload.get("device_control_enabled", base.device_control_enabled)),
                 dry_run=bool(payload.get("dry_run", base.dry_run)),
                 max_steps=int(payload.get("max_steps") or base.max_steps),
                 max_seconds=int(payload.get("max_seconds") or base.max_seconds),
@@ -233,6 +239,15 @@ class AgentService:
                 enabled = requested
                 if not requested:
                     self._stop_all_locked("the agent switch was turned off")
+            file_access_enabled = bool(patch.get("file_access_enabled", current.file_access_enabled))
+            app_control_enabled = bool(patch.get("app_control_enabled", current.app_control_enabled))
+            device_control_enabled = bool(patch.get("device_control_enabled", current.device_control_enabled))
+            if file_access_enabled and not current.file_access_enabled and not confirm:
+                raise AgentError("Enabling browser file transfers needs an explicit confirmation.")
+            if app_control_enabled:
+                raise AgentError("App control is unavailable because no app adapter is installed in this build.")
+            if device_control_enabled:
+                raise AgentError("Device control is unavailable because no device adapter is installed in this build.")
             approval_mode = str(patch.get("approval_mode", current.approval_mode))
             domains = current.domains
             if "domains" in patch:
@@ -256,6 +271,9 @@ class AgentService:
                 screenshot_to_provider=bool(
                     patch.get("screenshot_to_provider", current.screenshot_to_provider)
                 ),
+                file_access_enabled=file_access_enabled,
+                app_control_enabled=app_control_enabled,
+                device_control_enabled=device_control_enabled,
                 dry_run=bool(patch.get("dry_run", current.dry_run)),
                 max_steps=int(patch.get("max_steps", current.max_steps)),
                 max_seconds=int(patch.get("max_seconds", current.max_seconds)),
@@ -327,6 +345,12 @@ class AgentService:
                             else "Playwright is not installed. Run: pip install playwright && python -m playwright install chromium"
                         ),
                     },
+                    "files": {
+                        "available": browser_installed,
+                        "detail": "Browser download/upload only; file scope and per-step approval are both required.",
+                    },
+                    "apps": {"available": False, "detail": "No app-control adapter is installed in this build."},
+                    "devices": {"available": False, "detail": "No HID/device adapter is installed in this build."},
                     "official_api": {"available": False, "detail": "Documented stub; no provider in this milestone."},
                     "accessibility": {
                         "available": False,
