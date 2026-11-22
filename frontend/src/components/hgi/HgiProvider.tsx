@@ -330,8 +330,12 @@ export function HgiProvider({ children }: { children: ReactNode }) {
       engineRef.current = engine
       await engine.start()
       if (window.bozzDesktop) {
-        const background = await window.bozzDesktop.setBackgroundActivity(true)
-        if (!background.ok) showNotice(background.reason ?? 'Background gesture processing could not be enabled.')
+        try {
+          const background = await window.bozzDesktop.setBackgroundActivity(true)
+          if (!background.ok) showNotice(background.reason ?? 'Background gesture processing could not be enabled.')
+        } catch {
+          showNotice('Gestures are active, but background processing could not be confirmed.')
+        }
       }
       enabledRef.current = true
       setEnabled(true)
