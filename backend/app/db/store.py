@@ -275,6 +275,72 @@ class IntentStore:
                 ),
             )
 
+    def get_active_identity(self, owner_id: str) -> dict[str, Any] | None:
+        """Return the persisted active identity owned by the given owner."""
+        with self._db.read() as connection:
+            row = connection.execute(
+                """
+                SELECT i.* FROM active_identities a
+                JOIN identities i ON i.id = a.identity_id
+                WHERE a.owner_id = ? AND i.owner_id = ? AND i.status = 'active'
+                """,
+                (owner_id, owner_id),
+            ).fetchone()
+        return dict(row) if row else None
+
+    def set_active_identity(
+        self, owner_id: str, identity_id: str, updated_at: str
+    ) -> bool:
+        """Atomically select an active identity after checking its owner."""
+        with self._db.transaction() as connection:
+            owned = connection.execute(
+                "SELECT 1 FROM identities WHERE id = ? AND owner_id = ? AND status = 'active'",
+                (identity_id, owner_id),
+            ).fetchone()
+            if not owned:
+                return False
+            connection.execute(
+                """
+                INSERT INTO active_identities(owner_id, identity_id, updated_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT(owner_id) DO UPDATE SET
+                    identity_id = excluded.identity_id,
+                    updated_at = excluded.updated_at
+                """,
+                (owner_id, identity_id, updated_at),
+            )
+        return True
+
+    def set_active_identity_if_missing(
+        self, owner_id: str, identity_id: str, updated_at: str
+    ) -> None:
+        """Set the first active identity without overwriting an existing choice."""
+        with self._db.transaction() as connection:
+            connection.execute(
+                """
+                INSERT OR IGNORE INTO active_identities(owner_id, identity_id, updated_at)
+                SELECT owner_id, id, ?
+                FROM identities
+                WHERE id = ? AND owner_id = ? AND status = 'active'
+                """,
+                (updated_at, identity_id, owner_id),
+            )
+
+    def clear_active_identity(
+        self, owner_id: str, identity_id: str | None = None
+    ) -> None:
+        """Clear the active selection, optionally only if it still matches."""
+        with self._db.transaction() as connection:
+            if identity_id is None:
+                connection.execute(
+                    "DELETE FROM active_identities WHERE owner_id = ?", (owner_id,)
+                )
+            else:
+                connection.execute(
+                    "DELETE FROM active_identities WHERE owner_id = ? AND identity_id = ?",
+                    (owner_id, identity_id),
+                )
+
     def get_identity(self, identity_id: str) -> dict[str, Any] | None:
         with self._db.read() as connection:
             row = connection.execute(
