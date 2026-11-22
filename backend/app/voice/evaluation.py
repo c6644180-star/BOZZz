@@ -33,6 +33,7 @@ def evaluate_manifest(
     manifest_path: str | Path,
     *,
     threshold: float = 0.5,
+    thresholds: list[float] | None = None,
     cooldown_ms: int = 1000,
     detector_factory: Callable[[], Any] | None = None,
 ) -> dict[str, Any]:
@@ -42,6 +43,9 @@ def evaluate_manifest(
     if cooldown_ms < 0:
         raise ValueError("cooldown_ms cannot be negative.")
 
+    sweep = sorted(set([threshold, *(thresholds or [])]))
+    if any(not isinstance(value, (int, float)) or not 0.0 <= value <= 1.0 for value in sweep):
+        raise ValueError("Every sweep threshold must be between 0 and 1.")
     manifest = Path(manifest_path).expanduser().resolve()
     rows = _load_manifest(manifest)
     if detector_factory is None:
@@ -55,9 +59,12 @@ def evaluate_manifest(
 
     total_audio_seconds = 0.0
     peak_python_memory_bytes: int | None = None
-    positive_clips = positive_detected = negative_clips = 0
+    positive_clips = negative_clips = 0
     negative_duration_seconds = 0.0
-    false_activations = 0
+    metrics = {
+        value: {"positive_detected": 0, "false_activations": 0}
+        for value in sweep
+    }
     clip_reports: list[dict[str, Any]] = []
 
     try:
@@ -91,9 +98,9 @@ def evaluate_manifest(
                     negative_clips += 1
                     negative_duration_seconds += duration
 
-                detected = False
-                clip_false_activations = 0
-                last_activation_ms: float | None = None
+                detected = {value: False for value in sweep}
+                false_counts = {value: 0 for value in sweep}
+                last_activation_ms: dict[float, float | None] = {value: None for value in sweep}
                 peak_score = 0.0
                 frame_index = 0
                 reset = getattr(detector, "reset", None)
@@ -113,29 +120,31 @@ def evaluate_manifest(
                         raise ValueError("Detector returned a score outside the 0..1 range.")
                     peak_score = max(peak_score, score)
                     timestamp_ms = frame_index * 80.0
-                    if score >= threshold and (
-                        last_activation_ms is None
-                        or timestamp_ms - last_activation_ms >= cooldown_ms
-                    ):
-                        last_activation_ms = timestamp_ms
-                        if is_positive:
-                            detected = True
-                        else:
-                            clip_false_activations += 1
+                    for candidate in sweep:
+                        previous = last_activation_ms[candidate]
+                        if score >= candidate and (
+                            previous is None or timestamp_ms - previous >= cooldown_ms
+                        ):
+                            last_activation_ms[candidate] = timestamp_ms
+                            if is_positive:
+                                detected[candidate] = True
+                            else:
+                                false_counts[candidate] += 1
                     frame_index += 1
 
-                if not is_positive:
-                    false_activations += clip_false_activations
-                elif detected:
-                    positive_detected += 1
+                for candidate in sweep:
+                    if is_positive and detected[candidate]:
+                        metrics[candidate]["positive_detected"] += 1
+                    elif not is_positive:
+                        metrics[candidate]["false_activations"] += false_counts[candidate]
 
                 clip_reports.append({
                     "file": audio_path.name,
                     "label": row["label"],
                     "duration_seconds": round(duration, 3),
                     "peak_score": round(peak_score, 6),
-                    "detected": detected if is_positive else None,
-                    "false_activations": clip_false_activations if not is_positive else None,
+                    "detected_at_threshold": detected[threshold],
+                    "false_activations_at_threshold": false_counts[threshold] if not is_positive else None,
                 })
 
     finally:
@@ -148,9 +157,23 @@ def evaluate_manifest(
 
     elapsed_seconds = time.perf_counter() - started_at
     negative_hours = negative_duration_seconds / 3600.0
+    threshold_reports = []
+    for candidate in sweep:
+        positive_detected = metrics[candidate]["positive_detected"]
+        false_activations = metrics[candidate]["false_activations"]
+        threshold_reports.append({
+            "threshold": candidate,
+            "positive_detected": positive_detected,
+            "positive_recall": round(positive_detected / positive_clips, 6) if positive_clips else None,
+            "false_activations": false_activations,
+            "false_activations_per_hour": round(false_activations / negative_hours, 6) if negative_hours else None,
+        })
+    selected = metrics[threshold]
+    selected_false_activations = selected["false_activations"]
     return {
         "status": "evaluation_complete",
         "threshold": threshold,
+        "threshold_sweep": threshold_reports,
         "cooldown_ms": cooldown_ms,
         "audio_format": "mono 16-bit PCM WAV, 16 kHz",
         "microphone_opened": False,
@@ -161,12 +184,12 @@ def evaluate_manifest(
         "peak_python_memory_bytes": peak_python_memory_bytes,
         "memory_metric_note": "Python traced allocations only; native ONNX Runtime and total process memory are not included.",
         "positive_clips": positive_clips,
-        "positive_detected": positive_detected,
-        "positive_recall": round(positive_detected / positive_clips, 6) if positive_clips else None,
+        "positive_detected": selected["positive_detected"],
+        "positive_recall": round(selected["positive_detected"] / positive_clips, 6) if positive_clips else None,
         "negative_clips": negative_clips,
         "negative_audio_hours": round(negative_hours, 6),
-        "false_activations": false_activations,
-        "false_activations_per_hour": round(false_activations / negative_hours, 6) if negative_hours else None,
+        "false_activations": selected_false_activations,
+        "false_activations_per_hour": round(selected_false_activations / negative_hours, 6) if negative_hours else None,
         "clips": clip_reports,
-        "interpretation": "Results describe only the supplied labelled clips and threshold; they do not guarantee real-world accuracy or wake-word reliability.",
+        "interpretation": "Results describe only the supplied labelled clips and thresholds; they do not guarantee real-world accuracy or wake-word reliability.",
     }
