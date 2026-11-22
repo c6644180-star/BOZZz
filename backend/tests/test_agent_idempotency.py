@@ -48,9 +48,9 @@ class AgentIdempotencyTests(unittest.TestCase):
             connection.execute(
                 """
                 INSERT INTO agent_steps(task_id, step_id, status, level, detail, updated_at)
-                VALUES (?, 'step-1', 'running', 'attempted', 'Adapter call started', '2026-11-22T00:00:00Z')
+                VALUES (?, ?, 'running', 'attempted', 'Adapter call started', '2026-11-22T00:00:00Z')
                 """,
-                (task_id,),
+                (task_id, created["plan"]["steps"][0]["id"]),
             )
 
         restarted = AgentService(self.settings, database=Database(self.database_path))
