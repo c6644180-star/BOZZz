@@ -14,6 +14,7 @@ const { computePauseReasons, shouldPauseAnimation } = require('./mini/pause.cjs'
 const { launchDesktopApp } = require('./desktopApps.cjs')
 const { snapshotManagedWindows, focusManagedWindow } = require('./windowRegistry.cjs')
 const { createExternalWindowRegistry } = require('./externalWindowRegistry.cjs')
+const { setBackgroundActivity } = require('./backgroundActivity.cjs')
 const externalWindowRegistry = createExternalWindowRegistry()
 
 const WINDOW_SIZES = {
@@ -84,6 +85,13 @@ function sendMini(channel, payload) {
 function sendMain(channel, payload) {
   if (!mainWindow || mainWindow.isDestroyed()) return
   mainWindow.webContents.send(channel, payload)
+}
+
+function updateMainBackgroundActivity() {
+  return setBackgroundActivity(mainWindow, {
+    cameraActive: lastState.cameraActive,
+    miniMode: modeState.mode === 'mini',
+  })
 }
 
 function forwardMiniAction(action) {
@@ -305,7 +313,7 @@ function exitMini() {
   miniWindow = null
   if (win && !win.isDestroyed()) win.destroy()
   if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.setBackgroundThrottling(true)
+    updateMainBackgroundActivity()
     mainWindow.show()
     mainWindow.focus()
     sendMain('mini:mode', { mode: 'full' })
@@ -442,6 +450,14 @@ ipcMain.on('mini:set-mode', (event, mode) => {
 })
 
 // Expose only BOZZ-owned windows. Other applications are deliberately out of scope.
+ipcMain.handle('desktop:set-background-activity', (event, active) => {
+  if (!isFromMain(event)) return { ok: false, reason: 'Untrusted desktop request.' }
+  if (typeof active !== 'boolean') return { ok: false, reason: 'Background activity must be a boolean.' }
+  lastState = { ...lastState, cameraActive: active }
+  refreshTrayStatus()
+  return updateMainBackgroundActivity()
+})
+
 ipcMain.handle('desktop:list-managed-windows', (event) => {
   if (!isFromMain(event)) return []
   return snapshotManagedWindows({ mainWindow, miniWindow })
