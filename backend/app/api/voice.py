@@ -69,6 +69,7 @@ async def wake_word_stream(websocket: WebSocket) -> None:
             "frame_samples": 1280,
             "audio_stored": False,
             "audio_uploaded": False,
+            "model_version": detector.model_version,
         })
 
         while True:
