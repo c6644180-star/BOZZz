@@ -329,6 +329,10 @@ export function HgiProvider({ children }: { children: ReactNode }) {
       const engine = buildEngine()
       engineRef.current = engine
       await engine.start()
+      if (window.bozzDesktop) {
+        const background = await window.bozzDesktop.setBackgroundActivity(true)
+        if (!background.ok) showNotice(background.reason ?? 'Background gesture processing could not be enabled.')
+      }
       enabledRef.current = true
       setEnabled(true)
       setPreviewEpoch((value) => value + 1)
@@ -549,6 +553,9 @@ export function HgiProvider({ children }: { children: ReactNode }) {
     const engine = engineRef.current
     engineRef.current = null
     engine?.stop()
+    if (window.bozzDesktop) {
+      void window.bozzDesktop.setBackgroundActivity(false).catch(() => undefined)
+    }
     enabledRef.current = false
     setEnabled(false)
     setPaused(false)
