@@ -67,6 +67,17 @@ export default function SettingsPage() {
             ))}
           </select>
         </label>
+        <label className="toggle-row">
+          <span>
+            Allow future background listening
+            <small>Saved as an explicit preference for a future local “BOZZ” wake-word engine. This build has no wake-word engine and will not open the microphone in the background.</small>
+          </span>
+          <input
+            type="checkbox"
+            checked={settings.backgroundListeningConsent}
+            onChange={(e) => updateSettings({ backgroundListeningConsent: e.target.checked })}
+          />
+        </label>
         {settings.voiceMode === 'wake-word' && (
           <p className="settings-note">{WAKE_WORD_NOT_INSTALLED} Background listening is unavailable; BOZZ keeps the microphone closed and uses push-to-talk instead.</p>
         )}
@@ -90,6 +101,7 @@ export default function SettingsPage() {
           <p><strong>Backend (/api/health):</strong> {backend === 'online' ? 'online' : backend === 'checking' ? 'checking…' : 'offline — no backend connection'}</p>
           <p><strong>Local AI:</strong> {ai.available ? `${ai.provider} · ${ai.configuredModel}` : `unavailable — ${ai.detail ?? 'checking…'}`}</p>
           <p><strong>Speech output:</strong> {tts.available ? 'available in this browser' : 'not supported in this browser'}</p>
+          <p><strong>Microphone:</strong> {mic.listening ? 'ACTIVE — voice input is listening' : 'OFF — no background microphone listener is running'}</p>
           <p><strong>Voice input:</strong> {mic.available ? 'available in this browser' : `not supported${mic.reason ? ` (${mic.reason})` : ''}`}</p>
           <p><strong>Camera:</strong> {cameraSupported ? 'supported — only active after you grant permission in Gesture Lab' : 'not available in this browser'}</p>
           <p>
