@@ -1,6 +1,6 @@
 'use strict'
 
-const { app, BrowserWindow, Menu, globalShortcut, ipcMain, powerMonitor, screen } = require('electron')
+const { app, BrowserWindow, Menu, Tray, nativeImage, globalShortcut, ipcMain, powerMonitor, screen } = require('electron')
 const path = require('node:path')
 const { initialState, reduceMode } = require('./mini/state.cjs')
 const {
@@ -61,6 +61,8 @@ let pauseCheckedAt = 0
 let pauseReasons = []
 let lastPauseKey = ''
 let emergencyShortcutRegistered = false
+let tray = null
+let isQuitting = false
 
 function isFromMain(event) {
   return Boolean(mainWindow && !mainWindow.isDestroyed() && event.sender === mainWindow.webContents)
@@ -118,6 +120,31 @@ function hardenWindow(win) {
   win.webContents.on('will-attach-webview', (event) => event.preventDefault())
 }
 
+function createTray() {
+  if (tray) return
+  // A small local SVG keeps the tray icon self-contained; no remote asset is loaded.
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><rect x="1" y="1" width="30" height="30" rx="8" fill="#080B12" stroke="#E6B83F" stroke-width="2"/><path d="M10 7h8.5a7.5 7.5 0 0 1 0 15H10zm5 4v7h3.5a3.5 3.5 0 0 0 0-7z" fill="#F7F5ED"/></svg>'
+  const icon = nativeImage.createFromDataURL(`data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`)
+  tray = new Tray(icon)
+  tray.setToolTip('BOZZ — idle in background. Microphone and camera are off.')
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: 'Open BOZZ', click: () => showMainWindow() },
+    { type: 'separator' },
+    { label: 'Quit BOZZ', click: () => app.quit() },
+  ]))
+  tray.on('click', () => showMainWindow())
+}
+
+function showMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) createMainWindow()
+  if (modeState.mode === 'mini' && miniWindow && !miniWindow.isDestroyed()) {
+    miniWindow.showInactive()
+  } else {
+    mainWindow?.show()
+    mainWindow?.focus()
+  }
+}
+
 function createMainWindow() {
   mainWindow = new BrowserWindow({
     width: 1440,
@@ -141,6 +168,13 @@ function createMainWindow() {
     // ready-to-show can arrive after BOZZ_START_MINI has already entered mini
     // mode; showing here would leave both windows visible.
     if (modeState.mode !== 'mini') mainWindow?.show()
+  })
+  mainWindow.on('close', (event) => {
+    if (isQuitting) return
+    event.preventDefault()
+    if (modeState.mode === 'mini') exitMini()
+    mainWindow?.hide()
+    tray?.displayBalloon?.({ title: 'BOZZ is still running', content: 'BOZZ is idle. Microphone and camera remain off until you enable them.' })
   })
   mainWindow.on('closed', () => {
     mainWindow = null
@@ -475,6 +509,7 @@ ipcMain.on('mini:action', (event, raw) => {
 })
 
 app.whenReady().then(() => {
+  createTray()
   createMainWindow()
 
   const toggleRegistered = globalShortcut.register('CommandOrControl+Alt+M', toggleMini)
@@ -491,10 +526,16 @@ app.whenReady().then(() => {
 })
 
 app.on('before-quit', () => {
+  isQuitting = true
   stopWander()
+  if (tray) {
+    tray.destroy()
+    tray = null
+  }
   globalShortcut.unregisterAll()
 })
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit()
+  // The tray owns the background lifecycle on every desktop platform.
+  // Explicit Quit in the tray menu is the only normal exit path.
 })
