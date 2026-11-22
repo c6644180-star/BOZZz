@@ -7,6 +7,7 @@ on:
     branches:
       - feat/gate-1-persistence
       - feat/gate-2-action-approval
+      - feat/gate-3-voice-gesture
   workflow_dispatch:
 
 permissions:
