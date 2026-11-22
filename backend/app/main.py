@@ -26,6 +26,7 @@ from app.api.preferences import router as preferences_router
 from app.api.bids import router as bids_router
 from app.api.tts import get_tts
 from app.api.tts import router as tts_router
+from app.api.voice import router as voice_router
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 
@@ -89,6 +90,7 @@ app.include_router(bci_router)
 app.include_router(backups_router)
 app.include_router(memory_router)
 app.include_router(tts_router)
+app.include_router(voice_router)
 app.include_router(desktop_router)
 app.include_router(agent_router)
 app.include_router(agent_test_site_router)
