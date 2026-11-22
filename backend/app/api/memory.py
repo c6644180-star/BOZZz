@@ -1,8 +1,7 @@
-"""Local memory API: user-approved facts only. Nothing is learned silently."""
+"""Local memory API: user-approved facts, scoped to the active identity."""
 
 from __future__ import annotations
 
-from functools import lru_cache
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
@@ -12,17 +11,27 @@ from app.api.modules import get_permissions
 from app.core.config import get_settings
 from app.db.database import Database
 from app.db.store import IntentStore
+from app.identities.service import IdentityService
 from app.memory import MemoryNotFound, MemoryService, MemoryStore, MemoryValidationError
 from app.modules import PermissionDenied
 
 router = APIRouter(tags=["memory"])
 
 
-@lru_cache(maxsize=1)
+def _memory_scope(database: Database) -> tuple[str, str]:
+    owner_id = database.path.stem or "local_user"
+    identity = IdentityService(IntentStore(database)).get_active_identity(owner_id)
+    return owner_id, identity["id"] if identity else MemoryStore.LEGACY_IDENTITY
+
+
 def get_memory_service() -> MemoryService:
     settings = get_settings()
     database = Database(settings.database_path)
-    return MemoryService(MemoryStore(database), IntentStore(database))
+    owner_id, identity_id = _memory_scope(database)
+    return MemoryService(
+        MemoryStore(database, owner_id=owner_id, identity_id=identity_id),
+        IntentStore(database),
+    )
 
 
 def _enforce() -> None:
