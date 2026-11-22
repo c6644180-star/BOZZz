@@ -99,7 +99,7 @@ function createExternalWindowRegistry({
       // A focus token is one-use. Refresh the inventory before another action.
       handles.delete(id)
       const handle = entry.handle
-      const script = `${POWERSHELL_FOCUS_PREFIX}${handle}]); [void][BozzWindowApi]::ShowWindowAsync($handle, 9); if ([BozzWindowApi]::SetForegroundWindow($handle)) { 'OK' } else { 'DENIED' }`
+      const script = `${POWERSHELL_FOCUS_PREFIX}${handle}); [void][BozzWindowApi]::ShowWindowAsync($handle, 9); if ([BozzWindowApi]::SetForegroundWindow($handle)) { 'OK' } else { 'DENIED' }`
       try {
         const output = await runPowerShell(script)
         return output === 'OK'
