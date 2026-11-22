@@ -692,10 +692,12 @@ export function BozzVoiceProvider({ children }: { children: ReactNode }) {
     setCaption('Thinking with the local AI provider…')
     void requestChat(command, conversationIdRef.current, controller.signal).then(
       ({ reply, conversationId }) => {
-        conversationIdRef.current = conversationId
-        setActiveConversationId(conversationId)
-        window.localStorage.setItem('bozz.activeConversationId', conversationId)
-        window.dispatchEvent(new Event('bozz:conversation-updated'))
+        if (conversationId) {
+          conversationIdRef.current = conversationId
+          setActiveConversationId(conversationId)
+          window.localStorage.setItem('bozz.activeConversationId', conversationId)
+          window.dispatchEvent(new Event('bozz:conversation-updated'))
+        }
         if (chatAbortRef.current !== controller) return
         chatAbortRef.current = null
         finishHistory('done')
