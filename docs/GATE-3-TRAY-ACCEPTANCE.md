@@ -39,3 +39,10 @@ CI validates Electron syntax and the repository's automated test/build suites. I
 - This preference is not an active microphone grant. The current build has no installed local wake-word engine and does not start a background microphone listener.
 - A shared gate requires all of: wake-word mode, explicit BOZZ consent, an available local engine, and OS microphone permission. Regression tests cover each missing prerequisite.
 - The visible Settings microphone status distinguishes active voice input from the normal microphone-off state. Native tray status updates and OS permission handoff remain future work.
+
+
+### Tray sensor status
+
+- The native tray tooltip and right-click menu reflect the latest renderer-reported microphone and camera states.
+- Verify that starting/stopping voice input changes the microphone label between ACTIVE and off, and Gesture Lab changes the camera label only while the camera is actually active.
+- If the main renderer is unavailable, the initial tray state remains microphone off and camera off; the tray does not start either sensor.
