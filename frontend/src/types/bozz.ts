@@ -87,6 +87,8 @@ export interface VoiceSettings {
   pushToTalk: boolean
   pushToTalkKey: 'Space' | 'Control+Space' | 'Alt+Space'
   wakeWord: boolean
+  /** User's explicit preference for future local wake-word listening; never sufficient by itself to open the microphone. */
+  backgroundListeningConsent: boolean
   voiceMode: VoiceMode
   confirmLowConfidence: boolean
   logCommandText: boolean
