@@ -671,6 +671,7 @@ class AgentService:
         if stored is None:
             raise AgentNotFound(f"Agent task '{task_id}' was not found.")
         stored["pending_approval"] = None
+        stored["action_journal"] = self._store.list_action_journal(task_id)
         stored["injection_warnings"] = []
         stored["notes"] = []
         stored.setdefault("started_at", None)
@@ -959,8 +960,32 @@ class AgentService:
                 )
                 self._store.save_task(record.to_store())
                 return False
-        # Execute only after the policy and the approval gate.
-        result = adapter.act(step.action)
+        # Journal the exact action before calling the adapter. A crash between
+        # this write and the result write becomes "unknown" and is never replayed.
+        journal_id = self._store.begin_action(
+            task_id=record.id,
+            step_id=step.id,
+            attempt=1,
+            action_type=step.action.type,
+            action_fingerprint=self._action_fingerprint(step),
+            started_at=_iso_now(),
+        )
+        try:
+            result = adapter.act(step.action)
+        except Exception as exc:
+            self._store.finish_action(
+                journal_id,
+                state="failed",
+                result={"action_id": step.action.type, "error": str(exc)[:500]},
+                finished_at=_iso_now(),
+            )
+            raise
+        self._store.finish_action(
+            journal_id,
+            state="completed" if result.ok else "failed",
+            result=result.to_dict(),
+            finished_at=_iso_now(),
+        )
         state["method"] = result.method
         state["level"] = result.level
         state["detail"] = result.detail
@@ -973,27 +998,19 @@ class AgentService:
             step,
         )
         if not result.ok:
-            retryable = step.action.type in ("browser.type", "browser.click_link", "browser.open", "browser.scroll")
-            if retryable:
-                record.notes.append(f"Step '{step.id}' failed once; re-inspecting and retrying once.")
-                adapter.observe()
-                result = adapter.act(step.action)
-                state["detail"] = result.detail
-                state["level"] = result.level
-            if not result.ok:
-                state["status"] = "failed"
-                record.state = "failed"
-                record.report = self._report(
-                    record,
-                    "Could not confirm",
-                    f"Step '{step.goal}' failed: {result.detail}",
-                    "attempted",
-                    [],
-                    time.monotonic() - started,
-                )
-                self._audit(record, "action_failed", "failed", result.detail[:400], step)
-                self._store.save_task(record.to_store())
-                return False
+            state["status"] = "failed"
+            record.state = "failed"
+            record.report = self._report(
+                record,
+                "Could not confirm",
+                f"Step '{step.goal}' failed: {result.detail}",
+                "attempted",
+                [],
+                time.monotonic() - started,
+            )
+            self._audit(record, "action_failed", "failed", result.detail[:400], step)
+            self._store.save_task(record.to_store())
+            return False
         record.state = "verifying"
         verification = step.verify
         if verification is None and step.action.type == "browser.verify":
@@ -1324,6 +1341,7 @@ class AgentService:
                 )
                 or (record.steps[0]["application"] if record.steps else "Browser")
             ),
+            "action_journal": self._store.list_action_journal(record.id),
         }
 
     def _report(
