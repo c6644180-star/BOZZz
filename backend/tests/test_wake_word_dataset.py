@@ -59,7 +59,7 @@ class WakeWordDatasetTests(unittest.TestCase):
             ]
             self.assertEqual({row["label"] for row in rows}, {"positive", "negative"})
             for row in rows:
-                speaker = Path(row["path"]).name.split("_")[0]
+                speaker = Path(row["path"]).stem.rsplit("_", 1)[0]
                 if speaker in seen:
                     self.assertEqual(seen[speaker], split_name)
                 seen[speaker] = split_name
