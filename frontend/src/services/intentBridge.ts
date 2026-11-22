@@ -1,11 +1,8 @@
 import { proposeIntent } from './intent';
 
 export async function proposeFromText(text: string, source: 'voice' | 'chat' | 'gesture') {
-  // Send to backend which uses the same deterministic parser
-  // or (later) an LLM constrained to the action schema
-  return proposeIntent({
-    text,
-    source,
-    requireApproval: true,
-  });
+  // The backend API accepts the natural-language text and applies its
+  // own approval policy. Source is retained here for the voice/chat caller.
+  void source
+  return proposeIntent(text)
 }

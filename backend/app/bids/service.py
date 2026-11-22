@@ -148,59 +148,41 @@ class BidService:
         self, owner_id: str | None = None, status: str | None = None,
         category: str | None = None, project: str | None = None,
     ) -> list[dict[str, Any]]:
-        """List BIDs with optional filtering.
+        """List BIDs using AND-combined filters; owner scoping is preserved."""
+        clauses: list[str] = []
+        params: list[Any] = []
+        if owner_id is not None:
+            clauses.append("owner_id = ?")
+            params.append(owner_id)
+        if status:
+            clauses.append("status = ?")
+            params.append(status)
+        if category:
+            clauses.append("category LIKE ?")
+            params.append(f"%{category}%")
+        if project:
+            clauses.append("related_project LIKE ?")
+            params.append(f"%{project}%")
 
-        - Filters are applied with AND logic where multiple are given.
-        - Results are sorted by creation_timestamp (newest first).
-        """
-        records = self._store.list_bids_by_owner(owner_id=owner_id) if owner_id else []
-        # If no owner_id filter, we need to read all bids - use a different approach
-        # For now, use the store's search methods
-        # Actually, let me use a broader approach
-
-        # Read all and filter
+        where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
         with self._store._db.read() as connection:
-            if owner_id:
-                base = "WHERE owner_id = ?"
-                params = [owner_id]
-                if status:
-                    base += " AND status = ?"
-                    params.append(status)
-                    if category:
-                        base += " AND category LIKE ?"
-                        params.append(f"%{category}%")
-                        if project:
-                            base += " AND related_project LIKE ?"
-                            params.append(f"%{project}%")
-                elif category:
-                    base += " AND category LIKE ?"
-                    params.append(f"%{category}%")
-                    if project:
-                        base += " AND related_project LIKE ?"
-                        params.append(f"%{project}%")
-                elif project:
-                    base += " AND related_project LIKE ?"
-                    params.append(f"%{project}%")
-                else:
-                    base = "WHERE 1"
-                order = " ORDER BY creation_timestamp DESC"
-                full_query = f"SELECT * FROM bids {base}{order}"
-                rows = connection.execute(full_query, params).fetchall()
-            else:
-                # No filters - read all
-                rows = connection.execute(
-                    "SELECT * FROM bids ORDER BY creation_timestamp DESC"
-                ).fetchall()
+            rows = connection.execute(
+                f"SELECT * FROM bids{where} ORDER BY creation_timestamp DESC",
+                params,
+            ).fetchall()
 
         result = [dict(row) for row in rows]
-        # Post-process: deserialize JSON fields
+        json_fields = (
+            "suggestions", "approved_modifications", "dependencies",
+            "related_ideas", "implementation_references", "testing_evidence",
+        )
         for row in result:
-            row["suggestions"] = json.loads(row["suggestions"]) if row["suggestions"] else []
-            row["approved_modifications"] = json.loads(row["approved_modifications"]) if row["approved_modifications"] else []
-            row["dependencies"] = json.loads(row["dependencies"]) if row["dependencies"] else []
-            row["related_ideas"] = json.loads(row["related_ideas"]) if row["related_ideas"] else []
-            row["implementation_references"] = json.loads(row["implementation_references"]) if row["implementation_references"] else []
-            row["testing_evidence"] = json.loads(row["testing_evidence"]) if row["testing_evidence"] else []
+            for field in json_fields:
+                raw = row.get(field)
+                try:
+                    row[field] = json.loads(raw) if raw else []
+                except (TypeError, json.JSONDecodeError):
+                    row[field] = []
         return result
 
     # ----------------------------------------------------------- update
@@ -300,7 +282,7 @@ class BidService:
         record = self._store.get_bid(bid_id)
         if record is None:
             raise ValueError(f"BID '{bid_id}' was not found.")
-        if record.owner_id != caller_owner_id:
+        if record["owner_id"] != caller_owner_id:
             raise PermissionError(
                 f"You do not own BID '{record['title']}'."
             )
@@ -324,7 +306,7 @@ class BidService:
         record = self._store.get_bid(bid_id)
         if record is None:
             return False
-        if record.owner_id != caller_owner_id:
+        if record["owner_id"] != caller_owner_id:
             raise PermissionError(
                 f"You do not own BID '{record['title']}'."
             )

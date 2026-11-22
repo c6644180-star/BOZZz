@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import uuid
 from typing import Any, TypeVar
 
 from app.db.database import Database
@@ -61,6 +62,11 @@ class IntentStore:
     def __init__(self, database: Database):
         self._db = database
         self._db.initialize()
+
+    @staticmethod
+    def _generate_id() -> str:
+        """Generate a compact, non-PII identifier for local records."""
+        return uuid.uuid4().hex[:16]
 
     def create_intent(self, record: IntentRecord) -> None:
         with self._db.transaction() as connection:
@@ -206,7 +212,7 @@ class IntentStore:
                     behaviour_configuration, associated_projects,
                     approved_tool_references, memory_ownership_settings,
                     creation_timestamp, updated_timestamp, status, schema_version
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     record.id,
@@ -240,6 +246,7 @@ class IntentStore:
         voice_configuration: str | None = None,
         appearance_configuration: str | None = None,
         behaviour_configuration: str | None = None,
+        status: str | None = None,
     ) -> None:
         with self._db.transaction() as connection:
             connection.execute(
@@ -254,6 +261,7 @@ class IntentStore:
                     voice_configuration = COALESCE(?, voice_configuration),
                     appearance_configuration = COALESCE(?, appearance_configuration),
                     behaviour_configuration = COALESCE(?, behaviour_configuration),
+                    status = COALESCE(?, status),
                     updated_timestamp = ?
                 WHERE id = ?
                 """,
@@ -261,6 +269,7 @@ class IntentStore:
                     name, description, personality_config, role,
                     greeting, voice_configuration, appearance_configuration,
                     behaviour_configuration,
+                    status,
                     self._iso_now(),
                     identity_id,
                 ),
@@ -343,6 +352,7 @@ class IntentStore:
         functional_preferences: str | None = None,
         privacy_preferences: str | None = None,
         project_specific_settings: str | None = None,
+        updated_timestamp: str | None = None,
     ) -> None:
         with self._db.transaction() as connection:
             connection.execute(
@@ -365,7 +375,7 @@ class IntentStore:
                     productivity_preferences, accessibility_preferences,
                     functional_preferences, privacy_preferences,
                     project_specific_settings,
-                    self._iso_now(),
+                    updated_timestamp or self._iso_now(),
                     profile_id,
                 ),
             )
@@ -380,21 +390,20 @@ class IntentStore:
     def list_preference_profiles(
         self, identity_id: str | None = None, owner_id: str | None = None
     ) -> list[dict[str, Any]]:
+        clauses: list[str] = []
+        params: list[str] = []
+        if identity_id:
+            clauses.append("identity_id = ?")
+            params.append(identity_id)
+        if owner_id:
+            clauses.append("owner_id = ?")
+            params.append(owner_id)
+        where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
         with self._db.read() as connection:
-            if identity_id:
-                rows = connection.execute(
-                    "SELECT * FROM preference_profiles WHERE identity_id = ? ORDER BY name ASC",
-                    (identity_id,),
-                ).fetchall()
-            elif owner_id:
-                rows = connection.execute(
-                    "SELECT * FROM preference_profiles WHERE owner_id = ? ORDER BY name ASC",
-                    (owner_id,),
-                ).fetchall()
-            else:
-                rows = connection.execute(
-                    "SELECT * FROM preference_profiles ORDER BY name ASC"
-                ).fetchall()
+            rows = connection.execute(
+                f"SELECT * FROM preference_profiles{where} ORDER BY name ASC",
+                params,
+            ).fetchall()
         return [dict(row) for row in rows]
 
     def delete_preference_profile(self, profile_id: str) -> bool:
@@ -415,7 +424,7 @@ class IntentStore:
                     suggestions, approved_modifications, dependencies,
                     related_ideas, sharing_permissions, implementation_references,
                     testing_evidence, original_title, original_description
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     record["bid_id"],
@@ -466,6 +475,7 @@ class IntentStore:
         sharing_permissions: str | None = None,
         implementation_references: str | None = None,
         testing_evidence: str | None = None,
+        updated_timestamp: str | None = None,
     ) -> None:
         with self._db.transaction() as connection:
             connection.execute(
@@ -496,7 +506,7 @@ class IntentStore:
                     suggestions, approved_modifications, dependencies,
                     related_ideas, sharing_permissions, implementation_references,
                     testing_evidence,
-                    self._iso_now(),
+                    updated_timestamp or self._iso_now(),
                     bid_id,
                 ),
             )

@@ -60,6 +60,9 @@ class PreferenceService:
         - All preference categories default to empty/{} if not specified.
         - Profile starts with 'active' status.
         """
+        identity = self._store.get_identity(identity_id)
+        if identity is None or identity["owner_id"] != owner_id:
+            raise PermissionError("The selected identity does not belong to this local user.")
         profile_id = self._store._generate_id()
         now = self._iso_now()
         visual_str = _serialize_config(visual_preferences or {})
@@ -299,32 +302,18 @@ class PreferenceService:
             return "No changes detected."
         return "; ".join(changes)
 
-    def apply_preference_change(self, profile_id: str) -> dict[str, Any]:
-        """Apply a previously approved preference change.
-
-        This is called after the user has approved the change preview.
-        The changes are re-read and verified, then saved.
-        """
+    def apply_preference_change(
+        self, profile_id: str, caller_owner_id: str
+    ) -> dict[str, Any]:
+        """Refuse application until proposals and approvals are persisted."""
         profile = self.get_preference_profile(profile_id)
         if profile is None:
             raise ValueError(f"Preference profile '{profile_id}' was not found.")
-
-        # VERIFY: Re-read the profile and confirm it's in the expected state
-        # In a full implementation, this would cross-check with a pending
-        # change store. For now, we confirm the profile exists and is active.
-        if profile["status"] != "active":
-            raise ValueError(f"Preference profile '{profile['name']}' is not active.")
-
-        # SAVE: The changes are already persisted from the approval step.
-        # Record the verification and save.
-        now = self._iso_now()
-        self._store.update_preference_profile(
-            profile_id,
-            updated_timestamp=now,
+        if profile["owner_id"] != caller_owner_id:
+            raise PermissionError("You do not own this preference profile.")
+        raise PermissionError(
+            "No persisted approved proposal exists. Preference changes cannot be applied yet."
         )
-        updated = self.get_preference_profile(profile_id)
-        logger.info("preference change applied and verified id=%s", profile_id)
-        return updated
 
     def _iso_now(self) -> str:
         from datetime import datetime, timezone

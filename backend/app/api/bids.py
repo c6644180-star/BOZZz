@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
@@ -134,7 +136,6 @@ def create_bid(payload: CreateBidRequest) -> dict[str, Any]:
 
 @router.get("/bids", response_model=BidListResponse)
 def list_bids(
-    owner_id: str | None = Query(default=None, min_length=1),
     status: str | None = Query(default=None, max_length=50),
     category: str | None = Query(default=None, max_length=100),
     project: str | None = Query(default=None, max_length=200),
@@ -148,7 +149,7 @@ def list_bids(
     try:
         service = _get_service()
         bids = service.list_bids(
-            owner_id=owner_id, status=status, category=category, project=project
+            owner_id=get_owner_id(), status=status, category=category, project=project
         )
         return {"bids": bids, "count": len(bids)}
     except Exception as exc:
@@ -168,7 +169,7 @@ def get_bid(bid_id: str) -> dict[str, Any]:
     try:
         service = _get_service()
         bid = service.get_bid(bid_id)
-        if bid is None:
+        if bid is None or bid["owner_id"] != get_owner_id():
             raise HTTPException(status_code=404, detail=f"BID '{bid_id}' was not found.")
         return {
             "bid_id": bid["bid_id"],
@@ -213,6 +214,9 @@ def edit_bid(bid_id: str, payload: EditBidRequest) -> dict[str, Any]:
     """
     try:
         service = _get_service()
+        existing = service.get_bid(bid_id)
+        if existing is None or existing["owner_id"] != get_owner_id():
+            raise HTTPException(status_code=404, detail=f"BID '{bid_id}' was not found.")
         record = service.edit_bid(
             bid_id,
             ai_interpretation=payload.ai_interpretation,
@@ -252,6 +256,8 @@ def edit_bid(bid_id: str, payload: EditBidRequest) -> dict[str, Any]:
             "original_title": record["original_title"],
             "original_description": record["original_description"],
         }
+    except HTTPException:
+        raise
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except Exception as exc:
@@ -263,7 +269,6 @@ def edit_bid(bid_id: str, payload: EditBidRequest) -> dict[str, Any]:
 @router.get("/bids/search/description")
 def search_bids_by_description(
     query: str = Query(min_length=1, max_length=500),
-    owner_id: str | None = Query(default=None, min_length=1),
 ) -> dict[str, Any]:
     """Search BIDs by description or title.
 
@@ -272,7 +277,7 @@ def search_bids_by_description(
     """
     try:
         service = _get_service()
-        bids = service.search_bids(query, owner_id=owner_id)
+        bids = service.search_bids(query, owner_id=get_owner_id())
         return {"bids": bids, "count": len(bids), "query": query}
     except Exception as exc:
         logger = configure_logging("INFO").getChild("bid-api")
@@ -283,12 +288,11 @@ def search_bids_by_description(
 @router.get("/bids/search/category")
 def search_bids_by_category(
     category: str = Query(min_length=1, max_length=100),
-    owner_id: str | None = Query(default=None, min_length=1),
-) -> dict[str, Any]:
+ ) -> dict[str, Any]:
     """Search BIDs by category."""
     try:
         service = _get_service()
-        bids = service.search_bids_by_category(category, owner_id=owner_id)
+        bids = service.search_bids_by_category(category, owner_id=get_owner_id())
         return {"bids": bids, "count": len(bids), "category": category}
     except Exception as exc:
         logger = configure_logging("INFO").getChild("bid-api")
@@ -299,12 +303,11 @@ def search_bids_by_category(
 @router.get("/bids/search/project")
 def search_bids_by_project(
     project: str = Query(min_length=1, max_length=200),
-    owner_id: str | None = Query(default=None, min_length=1),
-) -> dict[str, Any]:
+ ) -> dict[str, Any]:
     """Search BIDs by related project."""
     try:
         service = _get_service()
-        bids = service.search_bids_by_project(project, owner_id=owner_id)
+        bids = service.search_bids_by_project(project, owner_id=get_owner_id())
         return {"bids": bids, "count": len(bids), "project": project}
     except Exception as exc:
         logger = configure_logging("INFO").getChild("bid-api")
@@ -332,6 +335,8 @@ def archive_bid(bid_id: str) -> dict[str, Any]:
         }
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
     except Exception as exc:
         logger = configure_logging("INFO").getChild("bid-api")
         logger.exception("unexpected error archiving bid")

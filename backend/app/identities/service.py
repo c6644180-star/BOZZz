@@ -9,11 +9,10 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import json
 import logging
-from typing import Any, TypeVar
+from typing import Any
 
 from app.db.store import IdentityRecord, IntentStore
 
-T = TypeVar("T", bound="IdentityRecord")
 
 logger = logging.getLogger("bozz.identities")
 
@@ -43,6 +42,12 @@ class IdentityService:
 
     def __init__(self, store: IntentStore):
         self._store = store
+
+    def _require_identity(self, identity_id: str) -> dict[str, Any]:
+        record = self._store.get_identity(identity_id)
+        if record is None:
+            raise ValueError(f"Identity '{identity_id}' was not found.")
+        return record
 
     # ----------------------------------------------------------- create
 
@@ -185,13 +190,13 @@ class IdentityService:
 
     # ----------------------------------------------------------- update
 
-    def rename_identity(self, identity_id: str, new_name: str) -> IdentityRecord:
+    def rename_identity(self, identity_id: str, new_name: str) -> dict[str, Any]:
         """Rename an identity.
 
         - Does not erase existing settings.
         - Name uniqueness is per-owner; no cross-owner collision check (local-only).
         """
-        record = self._store._require_identity(identity_id)
+        record = self._require_identity(identity_id)
         self._store.update_identity(
             identity_id,
             name=new_name,
@@ -216,13 +221,13 @@ class IdentityService:
         voice_configuration: dict | None = None,
         appearance_configuration: dict | None = None,
         behaviour_configuration: dict | None = None,
-    ) -> IdentityRecord:
+    ) -> dict[str, Any]:
         """Edit an identity's configuration.
 
         - Each field is optional; unspecified fields are preserved.
         - Personality/config changes are persisted immediately.
         """
-        record = self._store._require_identity(identity_id)
+        record = self._require_identity(identity_id)
         update_kwargs = {}
         if description is not None:
             update_kwargs["description"] = description
@@ -259,18 +264,15 @@ class IdentityService:
         - Returns the new identity's configuration and a summary of memory
           boundaries that are in effect.
         """
-        record = self._store._require_identity(identity_id)
+        record = self._require_identity(identity_id)
 
         # Ownership check: the caller must own this identity
-        if record.owner_id != caller_owner_id:
-            raise PermissionError(
-                f"You do not own identity '{record.name}'. "
-                f"Owner ID mismatch: expected '{caller_owner_id}', got '{record.owner_id}'."
-            )
+        if record["owner_id"] != caller_owner_id:
+            raise PermissionError("You do not own this identity.")
 
         # Build memory boundary report
-        new_memory = _parse_config(record.memory_ownership_settings)
-        current_memory = self._store._get_current_memory_ownership(caller_owner_id)
+        new_memory = _parse_config(record["memory_ownership_settings"])
+        current_memory = self._get_current_memory_ownership(caller_owner_id)
         boundary_report = {
             "previous_identity": current_memory,
             "new_identity": new_memory,
@@ -301,24 +303,22 @@ class IdentityService:
 
     # ----------------------------------------------------------- archive/delete
 
-    def archive_identity(self, identity_id: str, caller_owner_id: str) -> IdentityRecord:
+    def archive_identity(self, identity_id: str, caller_owner_id: str) -> dict[str, Any]:
         """Archive an identity (mark as inactive, not delete).
 
         - The identity is not deleted; its data is preserved.
         - It is removed from the active list.
         - Ownership check applies.
         """
-        record = self._store._require_identity(identity_id)
-        if record.owner_id != caller_owner_id:
-            raise PermissionError(
-                f"You do not own identity '{record.name}'."
-            )
+        record = self._require_identity(identity_id)
+        if record["owner_id"] != caller_owner_id:
+            raise PermissionError("You do not own this identity.")
         self._store.update_identity(
             identity_id,
             status="archived",
         )
         updated = self.get_identity(identity_id)
-        logger.info("identity archived id=%s name=%s", identity_id, record.name)
+        logger.info("identity archived id=%s name=%s", identity_id, record["name"])
         return updated
 
     def delete_identity(self, identity_id: str, caller_owner_id: str) -> bool:
@@ -329,18 +329,16 @@ class IdentityService:
         - Private memories associated with the identity are not silently
           inherited by other identities.
         """
-        record = self._store._require_identity(identity_id)
-        if record.owner_id != caller_owner_id:
-            raise PermissionError(
-                f"You do not own identity '{record.name}'."
-            )
+        record = self._require_identity(identity_id)
+        if record["owner_id"] != caller_owner_id:
+            raise PermissionError("You do not own this identity.")
         # Prevent deletion of the active/only identity
-        if record.status == "active" and self._is_only_active_identity(caller_owner_id, identity_id):
+        if record["status"] == "active" and self._is_only_active_identity(caller_owner_id, identity_id):
             raise ValueError(
                 "Cannot delete the last active identity. Archive it instead."
             )
         result = self._store.delete_identity(identity_id)
-        logger.info("identity deleted id=%s name=%s", identity_id, record.name)
+        logger.info("identity deleted id=%s name=%s", identity_id, record["name"])
         return result
 
     def _is_only_active_identity(self, owner_id: str, exclude_id: str) -> bool:
