@@ -384,21 +384,20 @@ class IntentStore:
     def list_preference_profiles(
         self, identity_id: str | None = None, owner_id: str | None = None
     ) -> list[dict[str, Any]]:
+        clauses: list[str] = []
+        params: list[str] = []
+        if identity_id:
+            clauses.append("identity_id = ?")
+            params.append(identity_id)
+        if owner_id:
+            clauses.append("owner_id = ?")
+            params.append(owner_id)
+        where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
         with self._db.read() as connection:
-            if identity_id:
-                rows = connection.execute(
-                    "SELECT * FROM preference_profiles WHERE identity_id = ? ORDER BY name ASC",
-                    (identity_id,),
-                ).fetchall()
-            elif owner_id:
-                rows = connection.execute(
-                    "SELECT * FROM preference_profiles WHERE owner_id = ? ORDER BY name ASC",
-                    (owner_id,),
-                ).fetchall()
-            else:
-                rows = connection.execute(
-                    "SELECT * FROM preference_profiles ORDER BY name ASC"
-                ).fetchall()
+            rows = connection.execute(
+                f"SELECT * FROM preference_profiles{where} ORDER BY name ASC",
+                params,
+            ).fetchall()
         return [dict(row) for row in rows]
 
     def delete_preference_profile(self, profile_id: str) -> bool:
