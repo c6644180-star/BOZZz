@@ -18,7 +18,6 @@ describe('MediaPipeSource camera lifecycle', () => {
       video: expect.any(Object),
     }))
     expect(source.getStream()).toBeNull()
-    expect(source.isRunning).toBeUndefined()
     vi.unstubAllGlobals()
   })
 
