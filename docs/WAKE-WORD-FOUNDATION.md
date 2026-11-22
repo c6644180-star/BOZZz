@@ -60,6 +60,40 @@ A loadable model is not an accuracy result. The classifier must actually be trai
 
 No background microphone capture is implemented by this foundation. Do not treat model-file validation as permission to start listening.
 
+
+## Gate 7 — permission-controlled local microphone stream
+
+The desktop Settings panel can start a real-time local detector session only when all of these conditions are met:
+
+1. The user has enabled **Allow future background listening** in Settings.
+2. The user separately clicks **Start local wake-word listener** and confirms the prompt.
+3. The configured classifier and both feature models passed the explicit load check.
+4. The local BOZZ backend accepts a WebSocket handshake from the loopback desktop renderer.
+5. The operating system grants microphone access to BOZZ.
+
+The backend is loaded before BOZZ requests microphone permission. The desktop renderer then requests a mono audio stream, creates a 16 kHz audio context, and sends 80 ms signed 16-bit PCM frames to `127.0.0.1:8000`. The WebSocket accepts only the configured local renderer origins and loopback clients. It requires an explicit consent handshake and rejects non-binary or incorrectly sized audio frames.
+
+Audio frames are processed in memory by the local ONNX detector. BOZZ does not write the stream to disk, upload it, or send it to a cloud speech provider. The current detector uses a 0.5 score threshold and two consecutive qualifying frames; these are experimental defaults, not a reliability guarantee.
+
+On detection, the server ends the stream. BOZZ releases the microphone, restores the main window, and shows a notification. It does **not** start command recording or execute an action. The user must press the mic button to speak. The user can stop listening from Settings or from the system tray. Disabling the background-listening consent preference also stops an active session.
+
+The tray shows microphone activity while this listener is active. Electron disables background throttling only for the explicitly active session. A renderer crash clears the tray status; OS track termination and backend disconnection stop the client capture.
+
+### Windows manual acceptance for Gate 7
+
+1. Install the optional wake-word runtime and configure the three ONNX paths in `backend/.env`. The classifier must genuinely be trained for “BOZZ”; do not rename a classifier for another phrase.
+2. Start BOZZ and open Settings. Enable **Allow future background listening**.
+3. Run **Validate local model**. Do not continue unless it reports that the engine loaded.
+4. Click **Start local wake-word listener** and confirm. Grant Windows microphone permission when prompted.
+5. Verify the tray says **Microphone: ACTIVE** and the Settings panel says **LISTENING**.
+6. Hide BOZZ to the tray. Speak the test phrase and check whether the window restores. On detection, verify the microphone indicator turns off.
+7. Verify the microphone remains off until you press the normal mic button.
+8. Start again, then stop from the tray. Confirm the tray changes to **Microphone: off** and Windows no longer shows BOZZ using the microphone.
+9. Repeat by disabling background-listening consent and by closing BOZZ. Both paths must stop capture.
+10. Test false activations and missed detections in a quiet room and with normal background noise. Record only labelled test outcomes; do not assume two-frame triggering means production accuracy.
+
+The streaming pipeline is a development feature and must remain disabled unless the local model is trained and evaluated. CI can test guards and score logic, but cannot validate a physical microphone, Windows permission prompts, acoustic performance, or actual wake-word accuracy.
+
 ## Upstream references
 
 - openWakeWord usage and frame input format: https://github.com/dscripka/openWakeWord
