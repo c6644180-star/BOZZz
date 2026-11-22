@@ -141,7 +141,7 @@ export function WakeWordDiagnostics() {
       <div className="wake-word-runtime" aria-live="polite">
         <p><strong>Listener:</strong> {runtime.phase === 'off' ? 'OFF' : runtime.phase.toUpperCase()}</p>
         <p>{runtime.detail}</p>
-        {runtime.phase === 'listening' ? (
+        {runtime.phase === 'listening' || runtime.phase === 'starting' ? (
           <button type="button" className="secondary-action" onClick={stopWakeWordListening}>
             Stop wake-word listener
           </button>
