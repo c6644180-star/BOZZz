@@ -28,6 +28,7 @@ class ChatRequest(BaseModel):
     # Memory reaches the model only when the user granted Memory data AND turned on
     # "Use memory in chat". Sending True here never overrides either switch.
     use_memory: bool = True
+    persist_conversation: bool = True
 
 
 class ChatResponse(BaseModel):
@@ -35,7 +36,7 @@ class ChatResponse(BaseModel):
     provider: str
     model: str
     local: bool = True
-    conversation_id: str
+    conversation_id: str | None = None
 
 
 def _memory_context() -> dict[str, str] | None:
@@ -59,9 +60,11 @@ def ai_status():
 @router.post("/chat", response_model=ChatResponse)
 def chat(payload: ChatRequest):
     provider = get_registry().default()
-    store = get_conversation_store()
+    store = get_conversation_store() if payload.persist_conversation else None
     conversation_id = payload.conversation_id
-    if conversation_id:
+    if not payload.persist_conversation and conversation_id:
+        raise HTTPException(status_code=422, detail="A non-persistent chat request cannot select a saved conversation.")
+    if conversation_id and store:
         try:
             history = store.recent_history(conversation_id, limit=12)
         except ConversationNotFound as exc:
@@ -83,15 +86,16 @@ def chat(payload: ChatRequest):
     except LocalProviderError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
-    if not conversation_id:
-        created = store.create(message[:120])
-        conversation_id = created["id"]
-    try:
-        store.append_exchange(conversation_id, message, reply)
-    except ConversationNotFound as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if store:
+        if not conversation_id:
+            created = store.create(message[:120])
+            conversation_id = created["id"]
+        try:
+            store.append_exchange(conversation_id, message, reply)
+        except ConversationNotFound as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     return ChatResponse(
         reply=reply,
