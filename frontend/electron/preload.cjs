@@ -57,6 +57,11 @@ const api = {
     if (id !== 'main' && id !== 'mini') return { ok: false, reason: 'Unknown BOZZ window.' }
     return ipcRenderer.invoke('desktop:focus-managed-window', id)
   },
+  listExternalWindows: async () => ipcRenderer.invoke('desktop:list-external-windows'),
+  focusExternalWindow: async (id) => {
+    if (typeof id !== 'string' || !/^[0-9a-f-]{36}$/i.test(id)) return { ok: false, reason: 'Unknown external window.' }
+    return ipcRenderer.invoke('desktop:focus-external-window', id)
+  },
   launchApp: async (appId) => {
     if (!['calculator', 'notepad', 'paint'].includes(appId)) return { ok: false, reason: 'Unsupported application.' }
     return ipcRenderer.invoke('desktop:launch-app', appId)
