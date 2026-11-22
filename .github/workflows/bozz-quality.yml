@@ -2,7 +2,7 @@ name: BOZZ quality checks
 
 on:
   pull_request:
-    branches: [main, feat/gate-1-memory-conversations]
+    branches: [main, feat/gate-1-memory-conversations, feat/gate-1-conversations]
   push:
     branches:
       - feat/gate-1-persistence
