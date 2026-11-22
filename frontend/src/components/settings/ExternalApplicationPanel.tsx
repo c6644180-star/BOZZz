@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { desktopBridge } from '../../services/desktopBridge'
 import type { ExternalDesktopWindow } from '../../types/desktop'
 
@@ -26,8 +26,6 @@ export function ExternalApplicationPanel() {
       setBusy(false)
     }
   }, [desktop])
-
-  useEffect(() => { void refresh() }, [refresh])
 
   async function focusWindow(item: ExternalDesktopWindow) {
     if (!desktop || busy) return
