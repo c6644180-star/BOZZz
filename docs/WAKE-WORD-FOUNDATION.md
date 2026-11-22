@@ -5,7 +5,7 @@
 - Push-to-talk/manual microphone actions remain the supported voice paths.
 - Selecting wake-word mode does not open a microphone.
 - BOZZ ships no trained `BOZZ` wake-word model and does not silently use a cloud or browser speech service as a fallback.
-- The local detector accepts audio frames supplied by a future, separately permission-gated capture service. The detector itself has no microphone/device code and never starts a capture stream.
+- The local detector accepts frames from the separate permission-controlled desktop stream. The detector itself has no microphone/device code; capture starts only after consent, a separate Start action, successful model loading, and OS permission.
 
 ## Optional installation
 
@@ -45,20 +45,21 @@ The Settings page now includes a local wake-word setup panel:
 - It calls the cheap status endpoint to show whether the three explicitly configured ONNX files exist and whether their file formats are supported.
 - It shows filenames only; absolute model paths are not displayed in the UI.
 - **Validate local model** requires a separate confirmation and calls the explicit CPU load-check endpoint.
-- The panel reports runtime availability, whether model loading succeeded, and the backend's microphone-opened flag.
+- The panel reports runtime availability, whether model loading succeeded, and that microphone capture is handled by the desktop renderer rather than the backend.
 - Validation is not performed automatically at application startup. It does not open the microphone, record audio, download assets, or start background listening.
 
-A loadable model is not an accuracy result. The classifier must actually be trained for the phrase “BOZZ” and evaluated on labelled positive and negative audio before any capture pipeline can be enabled.
+A loadable model is not an accuracy result. The classifier must actually be trained for the phrase “BOZZ” and evaluated on labelled positive and negative audio before using the detector.
 
-## Required gates before future microphone capture
+## Required gates before microphone capture
 
-1. Wake-word mode selected.
-2. Explicit background-listening consent granted.
-3. Windows microphone permission granted.
-4. A compatible local classifier and feature models are installed and validated.
-5. A visible tray indicator reports microphone activity, with a reliable pause/stop control.
+1. A compatible local classifier and both feature models are installed and explicitly validated.
+2. The user enables **Allow future background listening**.
+3. The user separately clicks **Start local wake-word listener** and confirms the prompt.
+4. The operating system grants microphone permission.
+5. The local backend accepts the renderer's loopback-only WebSocket handshake.
+6. The tray visibly reports microphone activity and provides a stop control.
 
-No background microphone capture is implemented by this foundation. Do not treat model-file validation as permission to start listening.
+No automatic microphone capture occurs at startup or merely because the consent preference is enabled. Do not treat model-file validation as permission to start listening.
 
 
 ## Gate 7 — permission-controlled local microphone stream
