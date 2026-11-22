@@ -24,7 +24,7 @@ import { useBozzVoice } from './hooks/useBozzVoice'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { isDesktopApp } from './services/desktopBridge'
 import { pushToast } from './services/toast'
-import { stopWakeWordListening, type WakeWordRuntimeState } from './services/wakeWordRuntime'
+import { getWakeWordRuntimeState, stopWakeWordListening, type WakeWordRuntimeState } from './services/wakeWordRuntime'
 import { togglePanel, type ShellPanel } from './home/panels'
 import type { ConnStatus } from './types/bozz'
 import MiniOrbPage from './pages/MiniOrbPage'
@@ -136,6 +136,15 @@ function Shell() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const status = useBackendStatus()
   const { settings, orbState, tts, ttsServer, mic, messages } = useBozzVoice()
+  const [wakeWordPhase, setWakeWordPhase] = useState(() => getWakeWordRuntimeState().phase)
+  useEffect(() => {
+    const onState = (event: Event) => {
+      const detail = (event as CustomEvent<WakeWordRuntimeState>).detail
+      if (detail) setWakeWordPhase(detail.phase)
+    }
+    window.addEventListener('bozz:wake-word-state', onState)
+    return () => window.removeEventListener('bozz:wake-word-state', onState)
+  }, [])
   const miniAvailable = isDesktopApp()
   const [chatReadCount, setChatReadCount] = useState(() => messages.length)
   const closePanel = useCallback(() => {
@@ -164,7 +173,9 @@ function Shell() {
     : tts.available
       ? 'Browser voice fallback'
       : 'Unavailable'
-  const voiceInput = mic.available ? (mic.listening ? 'Listening now' : 'Available') : 'Unsupported'
+  const voiceInput = wakeWordPhase === 'listening'
+    ? 'Wake-word listening'
+    : mic.available ? (mic.listening ? 'Listening now' : 'Available') : 'Unsupported'
   // The dot is a real signal: a BOZZ message arrived after Chat was last read.
   const chatUnread =
     panel !== 'chat' && messages.slice(chatReadCount).some((message) => message.from === 'bozz')
