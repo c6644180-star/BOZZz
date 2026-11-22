@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.db.database import Database
-from app.preferences.service import PreferenceService, _iso_now
+from app.preferences.service import PreferenceService
 from app.db.store import IntentStore
 from app.modules import PermissionDenied
 
