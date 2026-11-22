@@ -7,7 +7,7 @@ export const VOICE_MODE_COPY: Record<VoiceMode, { label: string; detail: string 
   },
   'wake-word': {
     label: 'Wake word (not installed)',
-    detail: 'Requires a trained local BOZZ wake-word model. No background microphone listener is started until that engine is installed and explicitly enabled.',
+    detail: 'The local detector can be started manually from Settings after a trained BOZZ model is validated. Detection restores BOZZ; press the mic button to speak. No command recording starts automatically.',
   },
   manual: {
     label: 'Manual',
