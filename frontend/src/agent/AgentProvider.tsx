@@ -28,6 +28,7 @@ export interface AgentStartOptions {
   dryRun?: boolean | null
   allowScreenshots?: boolean
   screenshotProvider?: string | null
+  idempotencyKey?: string
 }
 
 interface AgentContextValue {
