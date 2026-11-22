@@ -72,6 +72,33 @@ class WakeWordEvaluationTests(unittest.TestCase):
         self.assertEqual(report["false_activations"], 2)
         self.assertAlmostEqual(report["false_activations_per_hour"], 3600.0)
 
+    def test_threshold_sweep_reports_recall_and_false_activation_tradeoffs(self) -> None:
+        self.write_wav("positive.wav", 1000)
+        self.write_wav("negative.wav", 1000)
+        manifest = self.write_manifest([
+            {"path": "positive.wav", "label": "positive"},
+            {"path": "negative.wav", "label": "negative"},
+        ])
+        report = evaluate_manifest(
+            manifest,
+            threshold=0.5,
+            thresholds=[0.95, 0.7, 0.5],
+            detector_factory=lambda: self.detector,
+        )
+        self.assertEqual([row["threshold"] for row in report["threshold_sweep"]], [0.5, 0.7, 0.95])
+        low, middle, high = report["threshold_sweep"]
+        self.assertEqual(low["positive_recall"], 1.0)
+        self.assertGreater(low["false_activations"], 0)
+        self.assertEqual(middle["positive_recall"], 1.0)
+        self.assertEqual(high["positive_recall"], 0.0)
+        self.assertEqual(high["false_activations"], 0)
+        self.assertTrue(self.detector.stopped)
+
+    def test_rejects_threshold_outside_range(self) -> None:
+        manifest = self.write_manifest([{"path": "unused.wav", "label": "positive"}])
+        with self.assertRaisesRegex(ValueError, "threshold must be between 0 and 1"):
+            evaluate_manifest(manifest, thresholds=[1.2], detector_factory=lambda: self.detector)
+
     def test_rejects_wrong_audio_format(self) -> None:
         path = self.root / "wrong.wav"
         with wave.open(str(path), "wb") as wav:
