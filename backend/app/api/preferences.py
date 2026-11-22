@@ -155,7 +155,7 @@ def list_preference_profiles(
     """
     try:
         service = _get_service()
-        records = service.list_preference_profiles(identity_id=identity_id, owner_id=owner_id)
+        records = service.list_preference_profiles(identity_id=identity_id, owner_id=get_owner_id())
         return {"identities": records, "count": len(records)}
     except Exception as exc:
         logger = configure_logging("INFO").getChild("preference-api")
@@ -173,7 +173,7 @@ def get_preference_profile(profile_id: str) -> dict[str, Any]:
     try:
         service = _get_service()
         profile = service.get_preference_profile(profile_id)
-        if profile is None:
+        if profile is None or profile["owner_id"] != get_owner_id():
             raise HTTPException(status_code=404, detail=f"Preference profile '{profile_id}' was not found.")
         return profile
     except HTTPException:
@@ -194,6 +194,9 @@ def update_preference_profile(profile_id: str, payload: UpdatePreferenceProfileR
     """
     try:
         service = _get_service()
+        existing = service.get_preference_profile(profile_id)
+        if existing is None or existing["owner_id"] != get_owner_id():
+            raise HTTPException(status_code=404, detail="Preference profile not found.")
         record = service.edit_preference_profile(
             profile_id,
             name=payload.name,
@@ -286,6 +289,8 @@ def apply_preference_change(profile_id: str) -> dict[str, Any]:
         }
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except Exception as exc:
         logger = configure_logging("INFO").getChild("preference-api")
         logger.exception("unexpected error applying preference change")
@@ -314,4 +319,23 @@ def reset_preference_profile(profile_id: str) -> dict[str, Any]:
     except Exception as exc:
         logger = configure_logging("INFO").getChild("preference-api")
         logger.exception("unexpected error resetting preference profile")
+        raise HTTPException(status_code=500, detail="An unexpected local error occurred.") from exc
+
+@router.post("/preference-profiles/{profile_id}/delete")
+def delete_preference_profile(profile_id: str) -> dict[str, Any]:
+    """Delete a profile owned by the current local user."""
+    try:
+        deleted = _get_service().delete_preference_profile(
+            profile_id, caller_owner_id=get_owner_id()
+        )
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Preference profile was not found.")
+        return {"result": "deleted", "id": profile_id}
+    except HTTPException:
+        raise
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except Exception as exc:
+        logger = configure_logging("INFO").getChild("preference-api")
+        logger.exception("unexpected error deleting preference profile")
         raise HTTPException(status_code=500, detail="An unexpected local error occurred.") from exc
