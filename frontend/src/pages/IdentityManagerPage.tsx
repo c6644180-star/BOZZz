@@ -36,15 +36,22 @@ const emptyIdentity = {
 export default function IdentityManagerPage() {
   const [backend, setBackend] = useState<'online' | 'checking' | 'offline'>('checking')
   const [identities, setIdentities] = useState<Identity[]>([])
+  const [activeIdentityId, setActiveIdentityId] = useState<string | null>(null)
   const [draft, setDraft] = useState(emptyIdentity)
   const [showCreate, setShowCreate] = useState(false)
   const [busy, setBusy] = useState(false)
 
   async function loadIdentities() {
-    const response = await fetch('/api/identities')
+    const [response, activeResponse] = await Promise.all([
+      fetch('/api/identities'),
+      fetch('/api/identities/active'),
+    ])
     if (!response.ok) throw new Error('Could not load identities')
+    if (!activeResponse.ok) throw new Error('Could not load the active identity')
     const data = await response.json() as { identities: Identity[] }
+    const activeData = await activeResponse.json() as { identity: Identity | null }
     setIdentities(data.identities)
+    setActiveIdentityId(activeData.identity?.id ?? null)
   }
 
   useEffect(() => {
@@ -130,12 +137,12 @@ export default function IdentityManagerPage() {
             {identities.map((identity) => (
               <li className="identity-item" key={identity.id}>
                 <div className="identity-header">
-                  <strong>{identity.name}</strong><span>{identity.status}</span>
+                  <strong>{identity.name}</strong><span>{identity.id === activeIdentityId ? 'Active · ' : ''}{identity.status}</span>
                 </div>
                 <p>{identity.description || 'No description'}</p>
                 <p>Role: {identity.role} · Greeting: {identity.greeting}</p>
                 <div className="identity-actions">
-                  <button disabled={busy} onClick={() => void runAction(identity.id, 'switch')}>Switch</button>
+                  <button disabled={busy || identity.status !== 'active' || identity.id === activeIdentityId} onClick={() => void runAction(identity.id, 'switch')}>Switch</button>
                   <button disabled={busy || identity.status !== 'active'} onClick={() => void runAction(identity.id, 'archive')}>Archive</button>
                   <button disabled={busy} onClick={() => void runAction(identity.id, 'delete')}>Delete</button>
                 </div>
