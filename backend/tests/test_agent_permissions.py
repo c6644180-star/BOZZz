@@ -44,6 +44,13 @@ class AgentPermissionScopeTests(unittest.TestCase):
         disabled = self.service.update_settings({"file_access_enabled": False})
         self.assertFalse(disabled["file_access_enabled"])
 
+    def test_file_scope_grant_persists_across_service_restart(self) -> None:
+        self.service.update_settings({"file_access_enabled": True}, confirm=True)
+        restarted = AgentService(Settings(data_dir=self.data_dir), database=Database(self.data_dir / "bozz-permissions.db"))
+        self.assertTrue(restarted.settings_view()["file_access_enabled"])
+        self.assertFalse(restarted.settings_view()["app_control_enabled"])
+        self.assertFalse(restarted.settings_view()["device_control_enabled"])
+
     def test_app_and_device_scopes_cannot_be_enabled_without_adapters(self) -> None:
         with self.assertRaises(AgentError):
             self.service.update_settings({"app_control_enabled": True}, confirm=True)
