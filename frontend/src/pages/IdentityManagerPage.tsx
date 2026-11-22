@@ -101,6 +101,7 @@ export default function IdentityManagerPage() {
         throw new Error(body.detail ?? `${action} failed`)
       }
       await loadIdentities()
+      window.dispatchEvent(new Event('bozz:identity-changed'))
       pushToast('success', `Identity ${action}ed`, `Identity action completed: ${action}.`)
     } catch (error) {
       pushToast('error', `Identity ${action} failed`, String(error))
