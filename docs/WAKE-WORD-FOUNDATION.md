@@ -37,6 +37,19 @@ The first file must be a classifier trained for the phrase `BOZZ`. The other two
 
 A successful validation means only that the configured model pipeline loads. It does **not** prove that the model detects `BOZZ` accurately or has an acceptable false-activation rate. Those require a separate labelled audio evaluation and user-controlled real-device trial.
 
+
+## Settings diagnostics panel
+
+The Settings page now includes a local wake-word setup panel:
+
+- It calls the cheap status endpoint to show whether the three explicitly configured ONNX files exist and whether their file formats are supported.
+- It shows filenames only; absolute model paths are not displayed in the UI.
+- **Validate local model** requires a separate confirmation and calls the explicit CPU load-check endpoint.
+- The panel reports runtime availability, whether model loading succeeded, and the backend's microphone-opened flag.
+- Validation is not performed automatically at application startup. It does not open the microphone, record audio, download assets, or start background listening.
+
+A loadable model is not an accuracy result. The classifier must actually be trained for the phrase “BOZZ” and evaluated on labelled positive and negative audio before any capture pipeline can be enabled.
+
 ## Required gates before future microphone capture
 
 1. Wake-word mode selected.
