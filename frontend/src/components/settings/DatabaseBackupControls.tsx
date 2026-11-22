@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Archive, DatabaseBackup, RefreshCw, RotateCcw } from 'lucide-react'
+import { Archive, Database, RefreshCw, RotateCcw } from 'lucide-react'
 import { pushToast } from '../../services/toast'
 
 type BackupItem = {
@@ -78,7 +78,7 @@ export function DatabaseBackupControls() {
   return (
     <section className="settings-group database-backup-controls" aria-label="Database backup and restore">
       <div className="database-backup-controls__header">
-        <h3><DatabaseBackup /> Local database backups</h3>
+        <h3><Database /> Local database backups</h3>
         <button type="button" onClick={() => void refresh()} disabled={loading || busy} aria-label="Refresh backups">
           <RefreshCw />
         </button>
