@@ -67,6 +67,7 @@ export function BozzVoiceProvider({ children }: { children: ReactNode }) {
   const [orbState, setOrbState] = useState<OrbState>('idle')
   const [caption, setCaption] = useState(IdleCaption)
   const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(() => typeof window !== 'undefined' ? window.localStorage.getItem('bozz.activeConversationId') : null)
   const [settings, setSettings] = useState<VoiceSettings>(() => loadSettings())
   const [listening, setListening] = useState(false)
   const [micReason, setMicReason] = useState<string | null>(null)
@@ -136,6 +137,7 @@ export function BozzVoiceProvider({ children }: { children: ReactNode }) {
     if (savedId) {
       void fetchConversation(savedId).then(({ conversation }) => {
         if (!active) return
+        setActiveConversationId(savedId)
         setMessages(conversation.messages.map((item) => ({
           id: item.id,
           from: item.role === 'assistant' ? 'bozz' : 'user',
@@ -150,6 +152,7 @@ export function BozzVoiceProvider({ children }: { children: ReactNode }) {
           : 0
         if (status === 404) {
           conversationIdRef.current = null
+          setActiveConversationId(null)
           window.localStorage.removeItem('bozz.activeConversationId')
           setMessages([])
           return
@@ -163,6 +166,7 @@ export function BozzVoiceProvider({ children }: { children: ReactNode }) {
       chatAbortRef.current?.abort()
       chatAbortRef.current = null
       conversationIdRef.current = null
+      setActiveConversationId(null)
       window.localStorage.removeItem('bozz.activeConversationId')
       setMessages([])
       setCaption('Identity changed. Starting a separate conversation space.')
@@ -689,7 +693,9 @@ export function BozzVoiceProvider({ children }: { children: ReactNode }) {
     void requestChat(command, conversationIdRef.current, controller.signal).then(
       ({ reply, conversationId }) => {
         conversationIdRef.current = conversationId
+        setActiveConversationId(conversationId)
         window.localStorage.setItem('bozz.activeConversationId', conversationId)
+        window.dispatchEvent(new Event('bozz:conversation-updated'))
         if (chatAbortRef.current !== controller) return
         chatAbortRef.current = null
         finishHistory('done')
@@ -968,16 +974,33 @@ export function BozzVoiceProvider({ children }: { children: ReactNode }) {
     chatAbortRef.current?.abort()
     chatAbortRef.current = null
     conversationIdRef.current = null
+    setActiveConversationId(null)
     window.localStorage.removeItem('bozz.activeConversationId')
     setMessages([])
     setOrbState('idle')
     setCaption(IdleCaption)
   }, [stopVoice, stopListening, finishHistory])
 
+  const openConversation = useCallback(async (id: string) => {
+    const { conversation } = await fetchConversation(id)
+    conversationIdRef.current = conversation.id
+    setActiveConversationId(conversation.id)
+    window.localStorage.setItem('bozz.activeConversationId', conversation.id)
+    setMessages(conversation.messages.map((item) => ({
+      id: item.id,
+      from: item.role === 'assistant' ? 'bozz' : 'user',
+      text: item.content,
+      createdAt: Date.parse(item.created_at),
+      local: true,
+    })))
+    setOrbState('idle')
+    setCaption('Conversation restored.')
+  }, [])
+
   const value = useMemo<BozzVoice>(() => ({
-    orbState, caption, messages, settings, tts, ttsServer, voiceNote, mic, ai, clarification,
+    orbState, caption, messages, conversationId: activeConversationId, settings, tts, ttsServer, voiceNote, mic, ai, clarification,
     setCaption, submit, stopVoice, toggleListening, pauseInteraction, updateSettings, resetConversation,
-    pushToTalkStart, pushToTalkEnd, resolveClarification,
+    pushToTalkStart, pushToTalkEnd, resolveClarification, openConversation,
   }), [orbState, caption, messages, settings, tts, ttsServer, voiceNote, mic, ai, clarification, submit, stopVoice, toggleListening, pauseInteraction, updateSettings, resetConversation, pushToTalkStart, pushToTalkEnd, resolveClarification])
 
   return <BozzVoiceContext.Provider value={value}>{children}</BozzVoiceContext.Provider>
