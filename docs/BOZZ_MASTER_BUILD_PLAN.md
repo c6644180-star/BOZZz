@@ -73,10 +73,10 @@ A BID (BOZZ Idea ID) preserves the user's original idea and tracks its evolution
 - [x] Upgrade existing schema-v4 databases and backfill a deterministic active identity.
 - [x] Expose the active identity through the API and show it in Identity Manager.
 - [x] Add regression tests for persistence across database connections, owner isolation, archive/delete fallback and schema upgrade.
-- [ ] Bind memory records, settings, duplicate checks, exports and retrieval to both the local owner and persisted active identity. The current `memory_facts` table has no owner/identity columns and the current `memory_settings` table is global; migrate existing facts deterministically to the owner's active identity without exposing them to other identities.
+- [x] Bind memory records, settings, duplicate checks, exports and retrieval to both the local owner and persisted active identity. Legacy single-user memory is migrated to the selected identity; a pre-identity default scope is transferred only to the first selected identity.
 - [ ] Persist conversations/messages in SQLite with owner + identity scope, stable conversation IDs, bounded message sizes, safe ordering, and explicit export/delete. Current chat history is browser `localStorage` only and is not durable across browser profiles/devices.
 - [ ] Ensure chat loads only the selected identity's persisted conversation and memory context; switching identity must not leak prior conversation or memory into the new identity.
-- [ ] Add migration tests from existing schema-v5 databases, including legacy memory backfill, no-active-identity behaviour, and restart persistence.
+- [x] Add regression tests for owner/identity isolation and migration of legacy facts/settings to the selected identity. [ ] Add additional no-active-identity and process-restart integration coverage.
 - [ ] Add tested database backup/restore and recovery flow using SQLite's backup API (including WAL-safe backups), validation before restore, and preservation of the previous database on failed restore.
 
 **Exit gate:** restart-safe conversations; identity-isolated memory; deletion verified against the database. Gate 1 is not complete until the remaining unchecked items pass.
@@ -179,9 +179,7 @@ A BID (BOZZ Idea ID) preserves the user's original idea and tracks its evolution
 ## Current evidence snapshot
 
 - Gate 0 passed on commit `bda1228a55975451ee4f590df1ff06334665adf2`: backend compile/import checks, 32 backend tests, 221 frontend tests across 27 files and frontend production build.
-- Gate 1 work is being developed separately on `feat/gate-1-persistence`, based on the Gate 0 repair branch.
-- Gate 1 currently implements durable active identity selection, schema-v4 backfill, owner/status validation, archive/delete fallback, an active-identity API endpoint and Identity Manager status display.
-- Gate 1 still requires its own CI run. No passing result is claimed until that run completes.
+- Gate 1 identity selection is implemented on the earlier stacked branches. Identity-scoped memory is now being added on `feat/gate-1-memory-conversations`, based on Gate 3 so the staged work is preserved. CI has not yet run for this memory change.
 - Gate 2 implementation is being developed on `feat/gate-2-action-approval`, based on the Gate 1 branch; this preserves the staged dependency and does not change `main`.
 - Gate 2 changes include action-bound approval challenges and an explicit action preview in the approval card. Gate 2 CI passed on commit `b013f4266d7be6521078de4441495ad305619757` (backend syntax/import/regression tests and frontend tests/production build).
 - Gate 3 work is being developed on `feat/gate-3-voice-gesture`, based on the Gate 2 branch. Existing MediaPipe gesture controls and browser speech input are being hardened; a trained local “BOZZ” wake-word model and a native tray/background runtime are not yet present.
@@ -190,7 +188,7 @@ A BID (BOZZ Idea ID) preserves the user's original idea and tracks its evolution
 
 ## Immediate next work
 
-1. Complete and verify Gate 1, including identity-isolated memory, conversation persistence and backup/restore.
+1. Complete and verify Gate 1, including conversation persistence and WAL-safe backup/restore; identity-scoped memory is implemented but awaiting CI.
 2. Run Gate 2 CI and resolve any failures in action-bound approvals and preview rendering.
 3. Add durable idempotency and recovery semantics before expanding the executor.
 4. Keep desktop, voice and gesture inputs behind the same typed action and approval boundary.
