@@ -204,6 +204,8 @@ def get_identity(identity_id: str) -> dict[str, Any]:
         return identity
     except HTTPException:
         raise
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
     except Exception as exc:
         logger = configure_logging("INFO").getChild("identity-api")
         logger.exception("unexpected error getting identity")
