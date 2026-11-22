@@ -44,6 +44,12 @@ class IdentityService:
     def __init__(self, store: IntentStore):
         self._store = store
 
+    def _require_identity(self, identity_id: str) -> dict[str, Any]:
+        record = self._store.get_identity(identity_id)
+        if record is None:
+            raise ValueError(f"Identity '{identity_id}' was not found.")
+        return record
+
     # ----------------------------------------------------------- create
 
     def create_identity(
@@ -191,7 +197,7 @@ class IdentityService:
         - Does not erase existing settings.
         - Name uniqueness is per-owner; no cross-owner collision check (local-only).
         """
-        record = self._store._require_identity(identity_id)
+        record = self._require_identity(identity_id)
         self._store.update_identity(
             identity_id,
             name=new_name,
@@ -262,15 +268,15 @@ class IdentityService:
         record = self._store._require_identity(identity_id)
 
         # Ownership check: the caller must own this identity
-        if record.owner_id != caller_owner_id:
+        if record["owner_id"] != caller_owner_id:
             raise PermissionError(
-                f"You do not own identity '{record.name}'. "
-                f"Owner ID mismatch: expected '{caller_owner_id}', got '{record.owner_id}'."
+                f"You do not own identity '{record["name"]}'. "
+                f"Owner ID mismatch: expected '{caller_owner_id}', got '{record["owner_id"]}'."
             )
 
         # Build memory boundary report
-        new_memory = _parse_config(record.memory_ownership_settings)
-        current_memory = self._store._get_current_memory_ownership(caller_owner_id)
+        new_memory = _parse_config(record["memory_ownership_settings"])
+        current_memory = self._get_current_memory_ownership(caller_owner_id)
         boundary_report = {
             "previous_identity": current_memory,
             "new_identity": new_memory,
@@ -335,7 +341,7 @@ class IdentityService:
                 f"You do not own identity '{record.name}'."
             )
         # Prevent deletion of the active/only identity
-        if record.status == "active" and self._is_only_active_identity(caller_owner_id, identity_id):
+        if record["status"] == "active" and self._is_only_active_identity(caller_owner_id, identity_id):
             raise ValueError(
                 "Cannot delete the last active identity. Archive it instead."
             )
