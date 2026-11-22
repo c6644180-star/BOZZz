@@ -9,11 +9,10 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import json
 import logging
-from typing import Any, TypeVar
+from typing import Any
 
 from app.db.store import IdentityRecord, IntentStore
 
-T = TypeVar("T", bound="IdentityRecord")
 
 logger = logging.getLogger("bozz.identities")
 
@@ -191,7 +190,7 @@ class IdentityService:
 
     # ----------------------------------------------------------- update
 
-    def rename_identity(self, identity_id: str, new_name: str) -> IdentityRecord:
+    def rename_identity(self, identity_id: str, new_name: str) -> dict[str, Any]:
         """Rename an identity.
 
         - Does not erase existing settings.
@@ -222,7 +221,7 @@ class IdentityService:
         voice_configuration: dict | None = None,
         appearance_configuration: dict | None = None,
         behaviour_configuration: dict | None = None,
-    ) -> IdentityRecord:
+    ) -> dict[str, Any]:
         """Edit an identity's configuration.
 
         - Each field is optional; unspecified fields are preserved.
@@ -304,7 +303,7 @@ class IdentityService:
 
     # ----------------------------------------------------------- archive/delete
 
-    def archive_identity(self, identity_id: str, caller_owner_id: str) -> IdentityRecord:
+    def archive_identity(self, identity_id: str, caller_owner_id: str) -> dict[str, Any]:
         """Archive an identity (mark as inactive, not delete).
 
         - The identity is not deleted; its data is preserved.
