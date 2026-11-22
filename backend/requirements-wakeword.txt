@@ -1,0 +1,4 @@
+# Optional only. Do not install as part of the normal BOZZ setup.
+# openWakeWord uses ONNX Runtime on Windows; its Windows package dependency
+# may also install PyAudioWPatch, but BOZZ does not open an audio device here.
+openwakeword==0.6.0
