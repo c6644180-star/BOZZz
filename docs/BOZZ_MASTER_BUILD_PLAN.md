@@ -101,8 +101,9 @@ A BID (BOZZ Idea ID) preserves the user's original idea and tracks its evolution
 - [x] On backend startup, mark unfinished tasks interrupted/failed, mark in-flight step outcomes unknown, and never automatically replay external actions.
 - [x] Reconstruct persisted task/step views after restart and surface “Outcome unknown — inspect the target app” in the UI.
 - [x] Add regression tests for duplicate and concurrent submissions, request-hash conflicts, restart recovery and no-replay behavior.
-- [ ] Add explicit permission scopes for file/app/device adapters before expanding beyond the constrained browser adapter.
+- [x] Add explicit, persistent file/app/device permission scopes with safe defaults. Browser file transfers require a confirmed file-access grant plus per-step approval; app and device actions remain blocked because those adapters are not installed.
 - [ ] Add durable per-step operation/result journaling and adapter-level recovery before any future automatic retry of external side effects.
+- [ ] Implement and validate app-control and device/HID adapters only after their scope grants and safety tests are complete.
 - [ ] Validate real Windows process termination/restart and end-to-end failure paths on the target PC.
 
 **Exit gate:** supported workflows run end-to-end; unsupported actions fail closed; every consequential action is attributable and auditable; interrupted actions are never silently replayed. Gate 2 remains open until remaining permission, journaling and target-PC checks pass.
