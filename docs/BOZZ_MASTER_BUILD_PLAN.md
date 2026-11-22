@@ -117,7 +117,9 @@ A BID (BOZZ Idea ID) preserves the user's original idea and tracks its evolution
 - [x] Label the offline BOZZ wake-word engine as unavailable rather than presenting browser speech recognition as an offline detector.
 - [ ] Implement and package a local wake-word model trained specifically for “BOZZ”; verify its licence, model provenance and Windows CPU/RAM cost.
 - [ ] Add a native background/tray runtime so the user can deliberately keep BOZZ running after closing the main window; quitting must stop all sensors.
-- [ ] Add explicit background-listening opt-in, persistent mic indicator, OS permission handling, pause/disable controls and a wake event handoff to Electron.
+- [x] Add an explicit, revocable preference for future background listening; default off and does not activate the microphone in this build.
+- [x] Add a tested start gate requiring wake-word mode, user consent, an installed local engine and OS microphone permission.
+- [ ] Add a persistent native mic indicator, OS permission handoff, pause/disable runtime controls and a wake event handoff to Electron.
 - [ ] Gesture confidence, calibration, debounce, false-trigger and latency benchmarks on the target Windows PC.
 - [ ] Test gesture operation in Mini Orb mode, camera-off behaviour, camera removal, app quit and restart.
 - [ ] Speech/gesture may create plans; they never silently approve risky actions or bypass Gate 2.
