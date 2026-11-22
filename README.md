@@ -28,6 +28,15 @@ Current verified state: **2026-11-09**. Backend suite: **108 tests passing (1 sk
 
 Vision analysis, hardware adapters, user accounts/authentication, packaged Electron distribution, and the BOZZ Firm, Society, and Market Analyzer modules are **planned or preview-only**. Gesture accuracy has not been benchmarked on target hardware, and desktop control still needs a manual Notepad/hotkey test on your machine. The UI labels unavailable services instead of faking them. See [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) for the exact status of every area.
 
+
+## Final wake-word model pipeline and updates
+
+Gate 14 is the final planned development gate for the current wake-word foundation. It adds a local training preflight and openWakeWord-compatible configuration generator; it does not train or ship a BOZZ classifier. A real model still requires permission-cleared local training assets, an explicit training run, held-out evaluation, artifact validation, and user-approved activation. See [Gate 14 training guide](docs/WAKE-WORD-TRAINING.md).
+
+After the integration PRs are merged into `main`, update an existing Windows checkout with `UPDATE_BOZZ.bat`. It requires a clean Git working tree, fast-forwards from `origin/main`, and refreshes Python/npm dependencies without running destructive reset/clean commands. See [Windows update instructions](docs/WINDOWS-UPDATE.md). Then launch with `START_BOZZ.bat`.
+
+**Scope note:** “Final gate” means the final gate in this implementation sequence, not that every part of the broader BOZZ vision is production-complete. The BOZZ Firm, Society, Market Analyzer, hardware integrations, packaged installer, and other future modules remain subject to the status documented in [PROJECT_STATUS.md](docs/PROJECT_STATUS.md).
+
 ## Requirements
 
 - Windows 10/11 (tested on Windows 10, Intel i3, 8 GB RAM class hardware)
