@@ -74,12 +74,17 @@ A BID (BOZZ Idea ID) preserves the user's original idea and tracks its evolution
 - [x] Expose the active identity through the API and show it in Identity Manager.
 - [x] Add regression tests for persistence across database connections, owner isolation, archive/delete fallback and schema upgrade.
 - [x] Bind memory records, settings, duplicate checks, exports and retrieval to both the local owner and persisted active identity. Legacy single-user memory is migrated to the selected identity; a pre-identity default scope is transferred only to the first selected identity.
-- [ ] Persist conversations/messages in SQLite with owner + identity scope, stable conversation IDs, bounded message sizes, safe ordering, and explicit export/delete. Current chat history is browser `localStorage` only and is not durable across browser profiles/devices.
-- [ ] Ensure chat loads only the selected identity's persisted conversation and memory context; switching identity must not leak prior conversation or memory into the new identity.
-- [x] Add regression tests for owner/identity isolation and migration of legacy facts/settings to the selected identity. [ ] Add additional no-active-identity and process-restart integration coverage.
-- [ ] Add tested database backup/restore and recovery flow using SQLite's backup API (including WAL-safe backups), validation before restore, and preservation of the previous database on failed restore.
+- [x] Persist chat conversations and user/assistant messages in local SQLite, scoped by owner + active identity, with stable IDs, 12,000-character message bounds, deterministic insertion order, and list/read/rename/export/delete APIs.
+- [x] Restore the selected conversation after restart from its server-owned transcript; reject conversation IDs from another owner or identity and clear the active UI transcript on identity switching.
+- [x] Add regression tests for conversation persistence across reopened database connections, owner/identity isolation, message ordering, export/delete cascade and input limits.
+- [x] Implement SQLite backup using the online backup API, WAL checkpointing, integrity/schema validation before restore, a pre-restore safety copy and rollback if post-replacement initialization fails.
+- [x] Add regression tests for backup/restore recovery, safety-copy creation and rejection of malformed or path-traversal backup IDs.
+- [x] Add user-facing UI for browsing, opening, renaming, exporting and deleting saved conversations, plus creating/listing/restoring local database backups.
+- [x] Add API-level chat tests for server-owned history, cross-identity rejection and non-persistent internal AI requests.
+- [x] Add a no-active-identity default-scope conversation test.
+- [ ] Add remaining no-active-identity memory migration coverage and manual restart/restore validation on the target Windows PC.
 
-**Exit gate:** restart-safe conversations; identity-isolated memory; deletion verified against the database. Gate 1 is not complete until the remaining unchecked items pass.
+**Exit gate:** restart-safe conversations; identity-isolated memory; deletion verified against the database; WAL-safe backup/restore tests passing. Gate 1 remains open until the remaining memory migration and target-PC checks pass.
 
 ### Gate 2 — Intent and computer-action foundation
 - [x] Typed action schemas reject unknown actions, parameters and invalid value types.
@@ -179,7 +184,7 @@ A BID (BOZZ Idea ID) preserves the user's original idea and tracks its evolution
 ## Current evidence snapshot
 
 - Gate 0 passed on commit `bda1228a55975451ee4f590df1ff06334665adf2`: backend compile/import checks, 32 backend tests, 221 frontend tests across 27 files and frontend production build.
-- Gate 1 identity selection is implemented on the earlier stacked branches. Identity-scoped memory is implemented on `feat/gate-1-memory-conversations`, based on Gate 3 so the staged work is preserved. CI passed on commit `aaa5259051d8f7030d1009222a8f1dfdd9f3bff6` (backend compile/import/regression tests and frontend tests/production build). Conversation persistence and backup/restore remain open.
+- Gate 1 identity selection is implemented on the earlier stacked branches. Identity-scoped memory CI passed on commit `aaa5259051d8f7030d1009222a8f1dfdd9f3bff6`. Persistent conversations, conversation-management UI, WAL-safe backup/restore and backup-management UI are implemented on `feat/gate-1-conversations`; CI passed on commit `ebd3633d99b938f7794d10c933e0877e81641902`, run #85 (50 backend tests, 227 frontend tests across 28 files, Electron syntax check and frontend production build). Manual restart/restore validation on the target Windows PC remains open.
 - Gate 2 implementation is being developed on `feat/gate-2-action-approval`, based on the Gate 1 branch; this preserves the staged dependency and does not change `main`.
 - Gate 2 changes include action-bound approval challenges and an explicit action preview in the approval card. Gate 2 CI passed on commit `b013f4266d7be6521078de4441495ad305619757` (backend syntax/import/regression tests and frontend tests/production build).
 - Gate 3 work is being developed on `feat/gate-3-voice-gesture`, based on the Gate 2 branch. Existing MediaPipe gesture controls and browser speech input are being hardened; a trained local “BOZZ” wake-word model and a native tray/background runtime are not yet present.
@@ -188,7 +193,7 @@ A BID (BOZZ Idea ID) preserves the user's original idea and tracks its evolution
 
 ## Immediate next work
 
-1. Complete Gate 1 by implementing identity-scoped persistent conversations, conversation export/delete, and WAL-safe backup/restore; memory isolation CI has passed.
+1. Validate conversation restart, identity switching and backup/restore on the target Windows PC; finish the remaining no-active-identity memory migration coverage.
 2. Run Gate 2 CI and resolve any failures in action-bound approvals and preview rendering.
 3. Add durable idempotency and recovery semantics before expanding the executor.
 4. Keep desktop, voice and gesture inputs behind the same typed action and approval boundary.

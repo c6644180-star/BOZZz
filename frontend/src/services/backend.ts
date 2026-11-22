@@ -1,4 +1,4 @@
-import type { AIProviderStatus, ChatMessage, ConnStatus } from '../types/bozz'
+import type { AIProviderStatus, ConnStatus } from '../types/bozz'
 
 const HEALTH_URL = '/api/health'
 
@@ -42,18 +42,53 @@ export async function fetchAIStatus(signal?: AbortSignal): Promise<AIProviderSta
   }
 }
 
-export async function requestChat(message: string, messages: ChatMessage[], signal?: AbortSignal): Promise<string> {
-  const history = messages.slice(-12).map((item) => ({
-    role: item.from === 'bozz' ? 'assistant' : 'user',
-    content: item.text,
-  }))
+export interface StoredConversationMessage {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  created_at: string
+}
+
+export interface StoredConversation {
+  id: string
+  title: string
+  created_at: string
+  updated_at: string
+  messages: StoredConversationMessage[]
+}
+
+export async function fetchConversation(id: string, signal?: AbortSignal): Promise<{ conversation: StoredConversation }> {
+  const response = await fetch(`/api/conversations/${encodeURIComponent(id)}`, {
+    signal: signal ?? AbortSignal.timeout(8000),
+  })
+  const body = await response.json().catch(() => ({})) as { conversation?: StoredConversation; detail?: string }
+  if (!response.ok || !body.conversation) {
+    const error = new Error(body.detail || 'Could not restore this BOZZ conversation.')
+    Object.assign(error, { status: response.status })
+    throw error
+  }
+  return { conversation: body.conversation }
+}
+
+export async function requestChat(
+  message: string,
+  conversationId?: string | null,
+  signal?: AbortSignal,
+  persistConversation = true,
+): Promise<{ reply: string; conversationId: string | null }> {
   const response = await fetch('/api/chat', {
     method: 'POST',
     signal: signal ?? AbortSignal.timeout(70000),
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, history }),
+    body: JSON.stringify({ message, conversation_id: conversationId ?? undefined, persist_conversation: persistConversation }),
   })
-  const body = await response.json().catch(() => ({})) as { reply?: string; detail?: string }
-  if (!response.ok || !body.reply) throw new Error(body.detail || 'The local model did not return a response.')
-  return body.reply
+  const body = await response.json().catch(() => ({})) as {
+    reply?: string
+    conversation_id?: string
+    detail?: string
+  }
+  if (!response.ok || !body.reply || (persistConversation && !body.conversation_id)) {
+    throw new Error(body.detail || 'The local model did not return a response.')
+  }
+  return { reply: body.reply, conversationId: body.conversation_id ?? null }
 }

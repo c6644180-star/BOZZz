@@ -2,13 +2,14 @@ name: BOZZ quality checks
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, feat/gate-1-memory-conversations, feat/gate-1-conversations]
   push:
     branches:
       - feat/gate-1-persistence
       - feat/gate-2-action-approval
       - feat/gate-3-voice-gesture
       - feat/gate-1-memory-conversations
+      - feat/gate-1-conversations
   workflow_dispatch:
 
 permissions:
