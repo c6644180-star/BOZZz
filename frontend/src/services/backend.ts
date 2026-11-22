@@ -63,7 +63,9 @@ export async function fetchConversation(id: string, signal?: AbortSignal): Promi
   })
   const body = await response.json().catch(() => ({})) as { conversation?: StoredConversation; detail?: string }
   if (!response.ok || !body.conversation) {
-    throw new Error(body.detail || 'Could not restore this BOZZ conversation.')
+    const error = new Error(body.detail || 'Could not restore this BOZZ conversation.')
+    Object.assign(error, { status: response.status })
+    throw error
   }
   return { conversation: body.conversation }
 }
