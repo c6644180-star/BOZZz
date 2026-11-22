@@ -82,6 +82,73 @@ class ExecutorTests(unittest.TestCase):
         self.assertEqual(view["report"]["status"], "Stopped")
         self.assertIn("denied", view["report"]["summary"].casefold())
 
+    def test_pending_approval_shows_exact_safe_action_preview(self) -> None:
+        self._enable()
+        view = self.service.create_task(DEMO_TASK, dry_run=False)
+        record = self.service._tasks[view["id"]]
+        step = next(item for item in record.plan.steps if item.action.type == "browser.type")
+        decision = self.service.policy.decide(step, record.settings)
+        result: list[bool | None] = []
+        worker = threading.Thread(
+            target=lambda: result.append(self.service._request_step_approval(record, step, decision))
+        )
+        worker.start()
+        deadline = time.time() + 2
+        pending = None
+        while time.time() < deadline:
+            pending = self.service.task(view["id"]).get("pending_approval")
+            if pending:
+                break
+            time.sleep(0.01)
+        self.assertIsNotNone(pending)
+        self.assertEqual(pending["action_preview"]["action_id"], "browser.type")
+        self.assertEqual(pending["action_preview"]["parameters"]["field"], "Search videos")
+        self.assertEqual(pending["action_preview"]["parameters"]["text"], "A2D")
+        self.service.approve_step(view["id"], pending["approval_id"], True)
+        worker.join(timeout=2)
+        self.assertEqual(result, [True])
+
+    def test_approval_is_invalidated_if_action_changes_after_preview(self) -> None:
+        self._enable()
+        view = self.service.create_task(DEMO_TASK, dry_run=False)
+        record = self.service._tasks[view["id"]]
+        step = next(item for item in record.plan.steps if item.action.type == "browser.type")
+        decision = self.service.policy.decide(step, record.settings)
+        worker = threading.Thread(
+            target=lambda: self.service._request_step_approval(record, step, decision)
+        )
+        worker.start()
+        deadline = time.time() + 2
+        pending = None
+        while time.time() < deadline:
+            pending = self.service.task(view["id"]).get("pending_approval")
+            if pending:
+                break
+            time.sleep(0.01)
+        self.assertIsNotNone(pending)
+        step.action = AgentAction("browser.type", {"field": "Comment", "text": "Changed after preview"})
+        with self.assertRaisesRegex(Exception, "action changed"):
+            self.service.approve_step(view["id"], pending["approval_id"], True)
+        worker.join(timeout=2)
+        self.assertFalse(worker.is_alive())
+        self.assertTrue(record.cancel.is_set())
+        self.assertEqual(record.state, "stopped")
+        self.assertTrue(any(item["event"] == "agent_approval_invalidated" for item in self.service.audit(100)))
+
+    def test_url_approval_preview_hides_query_and_fragment(self) -> None:
+        step = PlanStep(
+            id="open-private-url",
+            goal="Open a page",
+            application="Browser",
+            method="browser_dom",
+            tier=2,
+            action=AgentAction("browser.open", {"url": "https://example.com/path?token=secret#private"}),
+            expected_result="Page opens",
+        )
+        preview = self.service._approval_action_preview(step)
+        self.assertEqual(preview["parameters"]["url"], "https://example.com/path")
+        self.assertNotIn("secret", str(preview))
+
     def test_step_cap_stops_the_task(self) -> None:
         self._enable()
         view = self.service.create_task(DEMO_TASK, dry_run=False)
