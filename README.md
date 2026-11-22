@@ -32,12 +32,12 @@ Vision analysis, hardware adapters, user accounts/authentication, packaged Elect
 
 - Windows 10/11 (tested on Windows 10, Intel i3, 8 GB RAM class hardware)
 - Python 3.13 (3.13.15 verified) with `pip`
-- Node.js 24 and npm
+- Node.js 22.12+ (or 20.19+) and npm
 - Ollama is optional. Without it, chat reports an unavailable provider; the workspace workflow still runs.
 
 ## Run BOZZ on Windows
 
-**One-file launcher:** double-click `START_BOZZ.bat` in the repository root. It checks the expected folders, Python 3.13, Node.js 24+, creates the root `.venv`, installs backend dependencies and (when needed) locked frontend dependencies, starts the FastAPI and Vite servers, checks their local health endpoints, and launches the Electron development shell. It does not delete project data or download an AI model. Ollama remains optional and must be installed/configured separately for local-model chat.
+**One-file launcher:** double-click `START_BOZZ.bat` in the repository root. It checks the expected folders, Python 3.13, a Vite-compatible Node.js version (22.12+ or 20.19+), creates the root `.venv`, installs backend dependencies and (when needed) locked frontend dependencies, starts the FastAPI and Vite servers, checks their local health endpoints, and launches the Electron development shell. It does not delete project data or download an AI model. Ollama remains optional and must be installed/configured separately for local-model chat.
 
 The launcher opens separate terminal windows for the backend, frontend and Electron shell so startup errors remain visible. Close the Electron window to quit the desktop shell; stop the backend and frontend from their own terminal windows.
 
