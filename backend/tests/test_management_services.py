@@ -83,7 +83,7 @@ class ManagementServiceTests(unittest.TestCase):
             connection.execute("DROP TABLE IF EXISTS active_identities")
             connection.execute("UPDATE schema_meta SET value = '4' WHERE key = 'version'")
         database.initialize()
-        self.assertEqual(database.schema_version(), 6)
+        self.assertEqual(database.schema_version(), 7)
         with database.read() as connection:
             table = connection.execute(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name='active_identities'"
