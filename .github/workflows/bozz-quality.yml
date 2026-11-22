@@ -3,6 +3,9 @@ name: BOZZ quality checks
 on:
   pull_request:
     branches: [main]
+  push:
+    branches:
+      - feat/gate-1-persistence
   workflow_dispatch:
 
 permissions:
