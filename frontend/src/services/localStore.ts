@@ -88,6 +88,7 @@ export const defaultSettings: VoiceSettings = {
   pushToTalk: true,
   pushToTalkKey: 'Space',
   wakeWord: false,
+  backgroundListeningConsent: false,
   voiceMode: 'push-to-talk',
   confirmLowConfidence: true,
   logCommandText: false,
@@ -136,6 +137,7 @@ export function loadSettings(): VoiceSettings {
         : defaultSettings.pushToTalkKey,
     pushToTalk: stored.pushToTalk !== false,
     wakeWord: stored.wakeWord === true,
+    backgroundListeningConsent: stored.backgroundListeningConsent === true,
     orbSize:
       stored.orbSize === 'medium' || stored.orbSize === 'xl' || stored.orbSize === 'large'
         ? stored.orbSize
