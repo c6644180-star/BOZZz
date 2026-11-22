@@ -16,7 +16,7 @@ function statusLabel(status: string): string {
     engine_invalid: 'Model could not load',
     unsupported_format: 'Unsupported model format',
     engine_loadable_not_accuracy_verified: 'Loaded · accuracy not verified',
-  } as Record<string, string>)[status] ?? status.replaceAll('_', ' ')
+  } as Record<string, string>)[status] ?? status.replace(/_/g, ' ')
 }
 
 export function WakeWordDiagnostics() {
