@@ -74,20 +74,21 @@ export async function requestChat(
   message: string,
   conversationId?: string | null,
   signal?: AbortSignal,
-): Promise<{ reply: string; conversationId: string }> {
+  persistConversation = true,
+): Promise<{ reply: string; conversationId: string | null }> {
   const response = await fetch('/api/chat', {
     method: 'POST',
     signal: signal ?? AbortSignal.timeout(70000),
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, conversation_id: conversationId ?? undefined }),
+    body: JSON.stringify({ message, conversation_id: conversationId ?? undefined, persist_conversation: persistConversation }),
   })
   const body = await response.json().catch(() => ({})) as {
     reply?: string
     conversation_id?: string
     detail?: string
   }
-  if (!response.ok || !body.reply || !body.conversation_id) {
+  if (!response.ok || !body.reply || (persistConversation && !body.conversation_id)) {
     throw new Error(body.detail || 'The local model did not return a response.')
   }
-  return { reply: body.reply, conversationId: body.conversation_id }
+  return { reply: body.reply, conversationId: body.conversation_id ?? null }
 }
