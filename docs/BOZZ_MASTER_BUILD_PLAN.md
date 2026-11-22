@@ -96,11 +96,16 @@ A BID (BOZZ Idea ID) preserves the user's original idea and tracks its evolution
 - [x] Approval is fingerprint-bound to the exact action parameters; changed actions invalidate approval and stop the task.
 - [x] Audit events record approval, denial, invalidation, action and verification outcomes.
 - [x] Dry-run, cancellation, timeout, step/time caps, emergency stop and verification-evidence reporting have regression coverage.
-- [ ] Add durable idempotency keys and recovery semantics for interrupted/retried actions.
+- [x] Add durable idempotency keys with canonical request hashing, atomic task reservation before planning, replay of the existing task for the same key/payload, and HTTP 409 for key reuse with a different payload.
+- [x] Send idempotency keys from the frontend and reuse the same key when the same submission is retried after a network failure.
+- [x] On backend startup, mark unfinished tasks interrupted/failed, mark in-flight step outcomes unknown, and never automatically replay external actions.
+- [x] Reconstruct persisted task/step views after restart and surface “Outcome unknown — inspect the target app” in the UI.
+- [x] Add regression tests for duplicate and concurrent submissions, request-hash conflicts, restart recovery and no-replay behavior.
 - [ ] Add explicit permission scopes for file/app/device adapters before expanding beyond the constrained browser adapter.
-- [ ] Expand end-to-end workflow coverage for the target Windows environment and verify all failure paths.
+- [ ] Add durable per-step operation/result journaling and adapter-level recovery before any future automatic retry of external side effects.
+- [ ] Validate real Windows process termination/restart and end-to-end failure paths on the target PC.
 
-**Exit gate:** supported workflows run end-to-end; unsupported actions fail closed; every consequential action is attributable and auditable. Gate 2 remains open until remaining items and CI pass.
+**Exit gate:** supported workflows run end-to-end; unsupported actions fail closed; every consequential action is attributable and auditable; interrupted actions are never silently replayed. Gate 2 remains open until remaining permission, journaling and target-PC checks pass.
 
 ### Gate 3 — Voice and gesture
 - [x] Audit existing MediaPipe hand-tracking engine, gesture modes, calibration and real-trial diagnostics.
