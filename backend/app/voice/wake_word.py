@@ -145,7 +145,17 @@ class LocalWakeWordDetector:
         scores = self._model.predict(frame)
         return {str(name): float(score) for name, score in scores.items()}
 
+    def reset(self) -> None:
+        """Reset temporal model state between independent evaluation clips."""
+        if self._stopped:
+            raise RuntimeError("The local wake-word detector is stopped.")
+        reset = getattr(self._model, "reset", None)
+        if callable(reset):
+            reset()
+
     def stop(self) -> None:
+        if self._stopped:
+            return
         self._stopped = True
         reset = getattr(self._model, "reset", None)
         if callable(reset):
