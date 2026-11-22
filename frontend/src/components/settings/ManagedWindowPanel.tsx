@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { desktopBridge } from '../services/desktopBridge'
-import type { ManagedDesktopWindow } from '../types/desktop'
+import { desktopBridge } from '../../services/desktopBridge'
+import type { ManagedDesktopWindow } from '../../types/desktop'
 
 export function ManagedWindowPanel() {
   const desktop = desktopBridge()
