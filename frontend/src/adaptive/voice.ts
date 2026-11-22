@@ -22,10 +22,10 @@ export function resolveVoiceMode(settings: { voiceMode?: unknown; wakeWord?: boo
   return settings.wakeWord === true ? 'wake-word' : 'push-to-talk'
 }
 
-export function canOpenMicrophone(mode: VoiceMode, hasManualPress: boolean): boolean {
-  // Only a configured wake-word engine may open the mic without a manual
-  // action. Push-to-talk and manual modes both require an explicit user press.
-  return mode === 'wake-word' || hasManualPress
+export function canOpenMicrophone(mode: VoiceMode, hasManualPress: boolean, backgroundGatePassed = false): boolean {
+  // Wake-word mode is never permission by itself. It requires the separately
+  // verified background gate; all other modes require a current manual press.
+  return hasManualPress || (mode === 'wake-word' && backgroundGatePassed)
 }
 
 export function pttLatencyMs(releasedAt: number, finalisedAt: number): number | null {
