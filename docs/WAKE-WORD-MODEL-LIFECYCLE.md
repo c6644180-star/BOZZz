@@ -47,3 +47,8 @@ Rollback checks that the previous candidate still exists and its checksum matche
 - The validator imports the installed local openWakeWord package; it does not claim to sandbox a malicious ONNX file. Only stage trusted models from sources whose terms permit intended use.
 - Rights fields in manifests are declarations, not independent legal verification.
 - Keep audio, models, and registries outside Git.
+
+
+## Gate 13: Wake-Word Control Center
+
+The Settings page presents path-free registry status, integrity state, and the active model version alongside local asset diagnostics and listener controls. A failed registry integrity check is shown as blocked; BOZZ does not silently select an environment classifier. Model activation and rollback remain explicit local CLI operations with a mandatory approval flag. After changing the active version, stop and restart the listener to load the new version.
