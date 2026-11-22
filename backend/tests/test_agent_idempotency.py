@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 import tempfile
 import unittest
 from pathlib import Path
@@ -33,6 +34,16 @@ class AgentIdempotencyTests(unittest.TestCase):
         self.assertEqual(first["id"], second["id"])
         self.assertEqual(first["state"], "awaiting_plan_approval")
         self.assertEqual(second["state"], "awaiting_plan_approval")
+        self.assertEqual(len(self.service.tasks()), 1)
+
+    def test_concurrent_duplicate_submissions_reserve_only_one_task(self) -> None:
+        def submit() -> dict:
+            return self.service.create_task(DEMO_TASK, idempotency_key=IDEMPOTENCY_KEY)
+
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            results = list(pool.map(lambda _: submit(), range(4)))
+
+        self.assertEqual(len({item["id"] for item in results}), 1)
         self.assertEqual(len(self.service.tasks()), 1)
 
     def test_reusing_key_for_different_payload_is_rejected(self) -> None:
