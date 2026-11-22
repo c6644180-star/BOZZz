@@ -95,10 +95,11 @@ def prepare_dataset(
         speaker_ids,
         key=lambda speaker: hashlib.sha256(f"{seed}:{speaker}".encode("utf-8")).hexdigest(),
     )
-    train_end = max(1, int(len(ordered) * train_ratio))
-    validation_end = max(train_end + 1, int(len(ordered) * (train_ratio + validation_ratio)))
-    if validation_end >= len(ordered):
-        validation_end = len(ordered) - 1
+    train_end = min(max(1, int(len(ordered) * train_ratio)), len(ordered) - 2)
+    validation_end = min(
+        max(train_end + 1, int(len(ordered) * (train_ratio + validation_ratio))),
+        len(ordered) - 1,
+    )
     assignments = {
         **{speaker: "train" for speaker in ordered[:train_end]},
         **{speaker: "validation" for speaker in ordered[train_end:validation_end]},
