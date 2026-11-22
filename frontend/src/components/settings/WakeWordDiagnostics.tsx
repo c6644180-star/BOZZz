@@ -24,6 +24,8 @@ function statusLabel(status: string): string {
     engine_invalid: 'Model could not load',
     unsupported_format: 'Unsupported model format',
     engine_loadable_not_accuracy_verified: 'Loaded · accuracy not verified',
+    active_model_invalid: 'Active model integrity check failed',
+    active_model_missing: 'No approved active model',
   } as Record<string, string>)[status] ?? status.replace(/_/g, ' ')
 }
 
@@ -95,7 +97,7 @@ export function WakeWordDiagnostics() {
   const active = runtime.phase === 'starting' || runtime.phase === 'listening'
   return (
     <section className="settings-module-permissions" aria-labelledby="wake-word-diagnostics-title">
-      <h3 id="wake-word-diagnostics-title">Local “BOZZ” wake-word setup</h3>
+      <h3 id="wake-word-diagnostics-title">BOZZ Wake-Word Control Center</h3>
       <p>
         Check the three local ONNX assets and optional CPU runtime. Validation loads the model once, but does not
         activate the microphone, record audio, or start background listening.
@@ -103,6 +105,8 @@ export function WakeWordDiagnostics() {
       {report ? (
         <>
           <p><strong>Model status:</strong> {statusLabel(report.status)}</p>
+          <p><strong>Registry:</strong> {report.registry_configured ? (report.registry_status === 'active_model_verified' ? 'verified approved registry' : report.registry_status === 'active_model_invalid' ? 'integrity check failed · listener blocked' : 'configured · no active model') : 'not configured · legacy local asset mode'}</p>
+          <p><strong>Active model version:</strong> {report.active_version ?? 'none'}</p>
           <ul>
             {ASSETS.map(([key, label]) => {
               const file = report.files[key]
@@ -164,6 +168,9 @@ export function WakeWordDiagnostics() {
         )}
       </div>
 
+      <small>
+        Registry activation and rollback require explicit local CLI approval. After changing versions, stop and restart the listener. Model loadability is not an accuracy guarantee.
+      </small>
       <small>
         Listening uses the validated model at a 0.5 score threshold with two consecutive frames. This is experimental:
         it may miss the phrase or trigger incorrectly. On detection, BOZZ restores its window and turns the microphone off;
