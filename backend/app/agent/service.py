@@ -911,51 +911,6 @@ class AgentService:
             self._audit(record, "adapter_unavailable", "blocked", reason, step)
             self._store.save_task(record.to_store())
             return False
-        permission_scope = self._required_permission_scope(step.action.type)
-        if permission_scope and not getattr(record.settings, permission_scope, False):
-            scope_label = {
-                "file_access_enabled": "File access",
-                "app_control_enabled": "App control",
-                "device_control_enabled": "Device control",
-            }[permission_scope]
-            reason = f"{scope_label} permission is off. Enable the scope in Agent Settings before approving this action."
-            state["status"] = "blocked"
-            state["level"] = "none"
-            state["detail"] = reason
-            record.state = "stopped"
-            record.report = self._report(
-                record, "Blocked", f"Step '{step.goal}' was blocked: {reason}", "none", [],
-                time.monotonic() - started,
-            )
-            self._audit(record, "permission_scope", "blocked", reason, step)
-            self._store.save_task(record.to_store())
-            return False
-        if permission_scope == "app_control_enabled":
-            reason = "No app-control adapter is installed in this build; no app action was run."
-            state["status"] = "blocked"
-            state["level"] = "none"
-            state["detail"] = reason
-            record.state = "stopped"
-            record.report = self._report(
-                record, "Blocked", f"Step '{step.goal}' was blocked: {reason}", "none", [],
-                time.monotonic() - started,
-            )
-            self._audit(record, "adapter_unavailable", "blocked", reason, step)
-            self._store.save_task(record.to_store())
-            return False
-        if permission_scope == "device_control_enabled":
-            reason = "No HID/device adapter is installed in this build; no device action was run."
-            state["status"] = "blocked"
-            state["level"] = "none"
-            state["detail"] = reason
-            record.state = "stopped"
-            record.report = self._report(
-                record, "Blocked", f"Step '{step.goal}' was blocked: {reason}", "none", [],
-                time.monotonic() - started,
-            )
-            self._audit(record, "adapter_unavailable", "blocked", reason, step)
-            self._store.save_task(record.to_store())
-            return False
         if decision.handoff:
             self._handoff(record, decision.reason)
             if not self._wait_if_paused(record):
