@@ -63,12 +63,12 @@ export default function SettingsPage() {
             onChange={(e) => updateSettings({ voiceMode: e.target.value as VoiceMode, wakeWord: e.target.value === 'wake-word' })}
           >
             {(Object.keys(VOICE_MODE_COPY) as VoiceMode[]).map((mode) => (
-              <option key={mode} value={mode}>{VOICE_MODE_COPY[mode].label}</option>
+              <option key={mode} value={mode} disabled={mode === 'wake-word'}>{VOICE_MODE_COPY[mode].label}</option>
             ))}
           </select>
         </label>
         {settings.voiceMode === 'wake-word' && (
-          <p className="settings-note">{WAKE_WORD_NOT_INSTALLED} Choosing this mode now falls back to push-to-talk.</p>
+          <p className="settings-note">{WAKE_WORD_NOT_INSTALLED} Background listening is unavailable; BOZZ keeps the microphone closed and uses push-to-talk instead.</p>
         )}
         <label className="toggle-row">
           <span>Ask “Did you say…?” when confidence is low<small>Speak yes/no or use the on-screen buttons. Nothing runs until you answer.</small></span>
