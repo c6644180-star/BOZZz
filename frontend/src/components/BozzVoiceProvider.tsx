@@ -959,6 +959,8 @@ export function BozzVoiceProvider({ children }: { children: ReactNode }) {
     finishHistory('cancelled')
     chatAbortRef.current?.abort()
     chatAbortRef.current = null
+    conversationIdRef.current = null
+    window.localStorage.removeItem('bozz.activeConversationId')
     setMessages([])
     setOrbState('idle')
     setCaption(IdleCaption)
