@@ -9,6 +9,9 @@ export interface WakeWordAssetStatus {
   runtime_available: boolean
   engine_loadable: boolean
   microphone_opened: boolean
+  registry_configured?: boolean
+  active_version?: string | null
+  registry_status?: string
   status: string
   detail: string
 }
