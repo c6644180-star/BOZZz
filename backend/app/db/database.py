@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Iterator
 import sqlite3
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS schema_meta (
@@ -171,6 +171,15 @@ CREATE TABLE IF NOT EXISTS identities (
 
 CREATE INDEX IF NOT EXISTS idx_identities_created ON identities(creation_timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_identities_name ON identities(name);
+
+-- One durable active identity per local owner. The FK clears stale selections
+-- when an identity is permanently deleted.
+CREATE TABLE IF NOT EXISTS active_identities (
+    owner_id TEXT PRIMARY KEY,
+    identity_id TEXT NOT NULL REFERENCES identities(id) ON DELETE CASCADE,
+    updated_at TEXT NOT NULL
+);
+
 
 CREATE TABLE IF NOT EXISTS preference_profiles (
     id TEXT PRIMARY KEY,
