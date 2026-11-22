@@ -6,6 +6,7 @@ import {
   getWakeWordRuntimeState,
   startWakeWordListening,
   stopWakeWordListening,
+  dismissWakeWordRuntimeStatus,
   type WakeWordRuntimeState,
 } from '../../services/wakeWordRuntime'
 
@@ -145,7 +146,7 @@ export function WakeWordDiagnostics() {
             Stop wake-word listener
           </button>
         ) : runtime.phase === 'detected' || runtime.phase === 'error' ? (
-          <button type="button" className="secondary-action" onClick={() => setRuntime(getWakeWordRuntimeState())}>
+          <button type="button" className="secondary-action" onClick={dismissWakeWordRuntimeStatus}>
             Acknowledge status
           </button>
         ) : (
