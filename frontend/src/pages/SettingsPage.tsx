@@ -128,7 +128,7 @@ export default function SettingsPage() {
           <p><strong>Backend (/api/health):</strong> {backend === 'online' ? 'online' : backend === 'checking' ? 'checking…' : 'offline — no backend connection'}</p>
           <p><strong>Local AI:</strong> {ai.available ? `${ai.provider} · ${ai.configuredModel}` : `unavailable — ${ai.detail ?? 'checking…'}`}</p>
           <p><strong>Speech output:</strong> {tts.available ? 'available in this browser' : 'not supported in this browser'}</p>
-          <p><strong>Microphone:</strong> {mic.listening ? 'ACTIVE — voice input is listening' : 'OFF — no background microphone listener is running'}</p>
+          <p><strong>Command microphone:</strong> {mic.listening ? 'ACTIVE — speech input is listening' : 'OFF — no speech command is being recorded'} (wake-word detector status is shown separately above)</p>
           {nativePrivacy?.available && <p><strong>Windows/macOS microphone permission:</strong> {privacyLabel(nativePrivacy.microphone)}</p>}
           {nativePrivacy?.available && <p><strong>Windows/macOS camera permission:</strong> {privacyLabel(nativePrivacy.camera)}</p>}
           {nativePrivacy && !nativePrivacy.available && <p><strong>Native OS privacy status:</strong> unavailable on this platform; use the operating system privacy settings to review access.</p>}
