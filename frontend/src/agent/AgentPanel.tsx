@@ -510,6 +510,32 @@ export function AgentPanel() {
             </section>
           )}
 
+          {Boolean(task.action_journal?.length) && (
+            <section className="agent-section" aria-label="Durable action journal">
+              <div className="agent-section-head">
+                <h3><ClipboardList /> Durable action journal</h3>
+                <span className="agent-chip">{task.action_journal?.length ?? 0} action(s)</span>
+              </div>
+              <ul className="agent-action-journal">
+                {task.action_journal?.map((entry) => (
+                  <li key={entry.id} className={`is-${entry.state}`}>
+                    <div>
+                      <strong>{entry.action_type}</strong>
+                      <span>{entry.state === 'unknown' ? 'Outcome unknown' : entry.state}</span>
+                    </div>
+                    <small>Step {entry.step_id} · attempt {entry.attempt} · {formatTime(entry.started_at)}</small>
+                    {typeof entry.result?.detail === 'string' && <p>{entry.result.detail}</p>}
+                    {entry.state === 'unknown' && (
+                      <p className="agent-action-journal__warning">
+                        The backend restarted while this action was in flight. Inspect the target app; BOZZ will not replay it.
+                      </p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           {task.report && (
             <section className={`agent-report tone-${reportTone(task.report.status)}`} aria-label="Task report">
               <div className="agent-section-head">
