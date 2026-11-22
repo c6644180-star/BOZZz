@@ -179,7 +179,7 @@ A BID (BOZZ Idea ID) preserves the user's original idea and tracks its evolution
 ## Current evidence snapshot
 
 - Gate 0 passed on commit `bda1228a55975451ee4f590df1ff06334665adf2`: backend compile/import checks, 32 backend tests, 221 frontend tests across 27 files and frontend production build.
-- Gate 1 identity selection is implemented on the earlier stacked branches. Identity-scoped memory is now being added on `feat/gate-1-memory-conversations`, based on Gate 3 so the staged work is preserved. CI has not yet run for this memory change.
+- Gate 1 identity selection is implemented on the earlier stacked branches. Identity-scoped memory is implemented on `feat/gate-1-memory-conversations`, based on Gate 3 so the staged work is preserved. CI passed on commit `aaa5259051d8f7030d1009222a8f1dfdd9f3bff6` (backend compile/import/regression tests and frontend tests/production build). Conversation persistence and backup/restore remain open.
 - Gate 2 implementation is being developed on `feat/gate-2-action-approval`, based on the Gate 1 branch; this preserves the staged dependency and does not change `main`.
 - Gate 2 changes include action-bound approval challenges and an explicit action preview in the approval card. Gate 2 CI passed on commit `b013f4266d7be6521078de4441495ad305619757` (backend syntax/import/regression tests and frontend tests/production build).
 - Gate 3 work is being developed on `feat/gate-3-voice-gesture`, based on the Gate 2 branch. Existing MediaPipe gesture controls and browser speech input are being hardened; a trained local “BOZZ” wake-word model and a native tray/background runtime are not yet present.
@@ -188,7 +188,7 @@ A BID (BOZZ Idea ID) preserves the user's original idea and tracks its evolution
 
 ## Immediate next work
 
-1. Complete and verify Gate 1, including conversation persistence and WAL-safe backup/restore; identity-scoped memory is implemented but awaiting CI.
+1. Complete Gate 1 by implementing identity-scoped persistent conversations, conversation export/delete, and WAL-safe backup/restore; memory isolation CI has passed.
 2. Run Gate 2 CI and resolve any failures in action-bound approvals and preview rendering.
 3. Add durable idempotency and recovery semantics before expanding the executor.
 4. Keep desktop, voice and gesture inputs behind the same typed action and approval boundary.
