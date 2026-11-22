@@ -24,6 +24,7 @@ import { useBozzVoice } from './hooks/useBozzVoice'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { isDesktopApp } from './services/desktopBridge'
 import { pushToast } from './services/toast'
+import { stopWakeWordListening, type WakeWordRuntimeState } from './services/wakeWordRuntime'
 import { togglePanel, type ShellPanel } from './home/panels'
 import type { ConnStatus } from './types/bozz'
 import MiniOrbPage from './pages/MiniOrbPage'
@@ -57,6 +58,27 @@ const SpatialPage = lazy(() => import('./pages/SpatialPage'))
 const MessagesPage = lazy(() => import('./pages/MessagesPage'))
 
 type Panel = ShellPanel
+
+function WakeWordRuntimeBridge() {
+  useEffect(() => {
+    const unsubscribe = window.bozzDesktop?.onStopWakeWord(() => stopWakeWordListening())
+    const onState = (event: Event) => {
+      const detail = (event as CustomEvent<WakeWordRuntimeState>).detail
+      if (detail?.phase === 'detected') {
+        pushToast('success', 'BOZZ wake phrase detected', 'The microphone is now off. Press the mic button to speak.')
+      }
+      if (detail?.phase === 'error') {
+        pushToast('error', 'Wake-word listener stopped', detail.detail)
+      }
+    }
+    window.addEventListener('bozz:wake-word-state', onState)
+    return () => {
+      unsubscribe?.()
+      window.removeEventListener('bozz:wake-word-state', onState)
+    }
+  }, [])
+  return null
+}
 
 function NavigationBridge() {
   const navigate = useNavigate()
@@ -275,6 +297,7 @@ function Shell() {
       <VoiceClarificationBar />
 
       <HgiRuntime />
+      <WakeWordRuntimeBridge />
       <MiniOrbBridge />
     </div>
   )
