@@ -58,6 +58,9 @@ jobs:
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
+      - name: Check Electron main-process syntax
+        working-directory: frontend
+        run: node --check electron/main.cjs
       - name: Run frontend tests
         working-directory: frontend
         run: npm test -- --passWithNoTests
