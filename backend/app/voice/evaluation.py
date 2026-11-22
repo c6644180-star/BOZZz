@@ -47,11 +47,11 @@ def evaluate_manifest(
     if detector_factory is None:
         from app.voice.wake_word import LocalWakeWordDetector
         detector_factory = LocalWakeWordDetector.load
+    detector = detector_factory()
     started_at = time.perf_counter()
     trace_started_here = not tracemalloc.is_tracing()
     if trace_started_here:
         tracemalloc.start()
-    detector = detector_factory()
 
     total_audio_seconds = 0.0
     peak_python_memory_bytes: int | None = None
