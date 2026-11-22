@@ -11,7 +11,6 @@ from app.db.database import Database
 from app.preferences.service import PreferenceService, _iso_now
 from app.db.store import IntentStore
 from app.modules import PermissionDenied
-from fastapi import Path as FastAPIPath
 
 
 def get_owner_id() -> str:
@@ -145,7 +144,6 @@ def create_preference_profile(payload: CreatePreferenceProfileRequest) -> dict[s
 @router.get("/preference-profiles", response_model=PreferenceListResponse)
 def list_preference_profiles(
     identity_id: str | None = Query(default=None, min_length=1),
-    owner_id: str | None = Query(default=None, min_length=1),
 ) -> dict[str, Any]:
     """List preference profiles.
 
