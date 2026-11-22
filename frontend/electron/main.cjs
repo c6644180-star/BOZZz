@@ -122,9 +122,8 @@ function hardenWindow(win) {
 
 function createTray() {
   if (tray) return
-  // A small local SVG keeps the tray icon self-contained; no remote asset is loaded.
-  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><rect x="1" y="1" width="30" height="30" rx="8" fill="#080B12" stroke="#E6B83F" stroke-width="2"/><path d="M10 7h8.5a7.5 7.5 0 0 1 0 15H10zm5 4v7h3.5a3.5 3.5 0 0 0 0-7z" fill="#F7F5ED"/></svg>'
-  const icon = nativeImage.createFromDataURL(`data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`)
+  // A tiny bundled PNG keeps the tray icon local and reliable on Windows.
+  const icon = nativeImage.createFromDataURL('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAyElEQVR4nGPk4Bb6zzCAgAWXxL21ulS1SCn4MlZxRvQQoLbFhByC4gBky3G5mFyAy2wmeliObiayXUz4FNLSESgOgLmIlpajOwJmJ85cgA28f3WboBpBMVWSHESUA4ixGF0tsQ7BSAP0BgQdQIrvydFHUhqAAWKCl1gHDP4oGHXAqANGHTDqAFoDsopicusHbIBgCJBav5Oqb2hEAcw3tGgRwZvl9GoXotuDEQW07JhgMxvuAFztdlpYjmzX4Oqa0dIhRHdO6Q0AC7pP9smkSCsAAAAASUVORK5CYII=')
   tray = new Tray(icon)
   tray.setToolTip('BOZZ — idle in background. Microphone and camera are off.')
   tray.setContextMenu(Menu.buildFromTemplate([
