@@ -12,7 +12,7 @@ The Settings page now includes a small app launcher. In the installed Electron d
 
 The Settings page can list and focus only BOZZ-owned windows (the main BOZZ window and the optional mini orb). The main process returns a small metadata snapshot: fixed window ID, title, visibility, focus and minimized state. Focus actions accept only `main` or `mini`, and the UI asks for confirmation first. No external application windows, titles, processes, screenshots, or contents are enumerated or inspected in this milestone.
 
-Automated tests cover inventory filtering, restoring/focusing a minimized BOZZ window, rejecting unknown IDs, and missing-window handling.
+Automated tests cover inventory filtering, restoring/focusing a minimized BOZZ window, rejecting unknown IDs, missing-window handling, the fixed app allowlist, empty launch arguments, `shell: false`, unsupported platforms, and process-start failures.
 
 ## Boundaries
 
@@ -29,12 +29,12 @@ Automated tests cover inventory filtering, restoring/focusing a minimized BOZZ w
 3. Confirm BOZZ remains running and the tray menu can be reopened.
 4. Confirm no app starts merely by launching BOZZ.
 5. Confirm no app action occurs from AI-generated text or a background event.
-6. Verify unsupported IDs are rejected in the helper's tests or a local Node check.
+6. Verify unsupported IDs, unsupported platforms, and spawn failures are rejected by the automated helper tests.
 
 ## Next increments
 
-1. Add a visible in-app app launcher with a confirmation step.
-2. Add registered window listing and focus actions with explicit per-action consent.
-3. Add app-specific adapters only after threat-model review and automated tests.
+1. Add app-specific window discovery and focus adapters only after selecting a maintained, Windows-compatible implementation and reviewing its permissions and failure modes.
+2. Add keyboard/mouse automation only through narrow, user-approved, app-specific actions with visible execution state and a reliable stop control.
+3. Keep arbitrary command execution, hidden monitoring, and unrestricted control out of the renderer and AI tool surface.
 
 Do not describe Gate 4 as full computer control until those later increments are implemented and verified.
