@@ -5,6 +5,7 @@ import { useHgi } from '../hgi/hgiContext'
 import { AppearanceSettings } from '../settings/AppearanceSettings'
 import { MiniOrbSettings } from '../settings/MiniOrbSettings'
 import { ModulePermissions } from '../settings/ModulePermissions'
+import { DatabaseBackupControls } from '../settings/DatabaseBackupControls'
 import type { ConnStatus } from '../../types/bozz'
 
 export function SettingsPanel({ backend, onClose }: { backend: ConnStatus; onClose: () => void }) {
@@ -88,6 +89,8 @@ export function SettingsPanel({ backend, onClose }: { backend: ConnStatus; onClo
       <section className="settings-group" id="module-permissions" aria-label="Module permissions">
         <ModulePermissions variant="compact" />
       </section>
+
+      <DatabaseBackupControls />
 
       <section className="settings-group" aria-label="Sensor and service status">
         <h3>Status</h3>
