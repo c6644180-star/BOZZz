@@ -93,7 +93,7 @@ export default function SettingsPage() {
         <label className="toggle-row">
           <span>
             Allow future background listening
-            <small>Saved as an explicit preference for a future local “BOZZ” wake-word engine. This build has no wake-word engine and will not open the microphone in the background.</small>
+            <small>Allows the separately validated local “BOZZ” detector to be started manually below. This preference never starts the microphone by itself; use the explicit Start button and OS permission prompt.</small>
           </span>
           <input
             type="checkbox"
