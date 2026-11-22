@@ -43,7 +43,7 @@ function parseWindowInventory(stdout) {
     if (!app || !Number.isSafeInteger(processId) || processId <= 0) return []
     if (!Number.isSafeInteger(handle) || handle <= 0 || seen.has(processId)) return []
     seen.add(processId)
-    return [{ processId, handle, ...app }]
+    return [{ processId, handle, processName, ...app }]
   })
 }
 
@@ -78,7 +78,7 @@ function createExternalWindowRegistry({
         const rows = parseWindowInventory(await runPowerShell(POWERSHELL_LIST_SCRIPT))
         const windows = rows.map((row) => {
           const id = createId()
-          handles.set(id, { handle: row.handle, appId: row.appId, appName: row.appName })
+          handles.set(id, { processId: row.processId, handle: row.handle, processName: row.processName, appId: row.appId, appName: row.appName })
           return { id, appId: row.appId, appName: row.appName }
         })
         return { ok: true, windows }
@@ -99,7 +99,9 @@ function createExternalWindowRegistry({
       // A focus token is one-use. Refresh the inventory before another action.
       handles.delete(id)
       const handle = entry.handle
-      const script = `${POWERSHELL_FOCUS_PREFIX}${handle}); [void][BozzWindowApi]::ShowWindowAsync($handle, 9); if ([BozzWindowApi]::SetForegroundWindow($handle)) { 'OK' } else { 'DENIED' }`
+      const processId = entry.processId
+      const processName = entry.processName
+      const script = `${POWERSHELL_FOCUS_PREFIX}; $process = Get-Process -Id ${processId} -ErrorAction SilentlyContinue; if ($null -eq $process -or [long]$process.MainWindowHandle -ne ${handle} -or $process.ProcessName -ne '${processName}') { 'STALE' } else { $nativeHandle = [IntPtr]::new([Int64]${handle}); [void][BozzWindowApi]::ShowWindowAsync($nativeHandle, 9); if ([BozzWindowApi]::SetForegroundWindow($nativeHandle)) { 'OK' } else { 'DENIED' } }`
       try {
         const output = await runPowerShell(script)
         return output === 'OK'
