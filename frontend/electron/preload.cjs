@@ -84,6 +84,7 @@ const api = {
   onMiniPause: (callback) => subscribe('mini:pause', callback),
   onMiniMode: (callback) => subscribe('mini:mode', callback),
   onMiniAction: (callback) => subscribe('mini:action', callback),
+  onStopCamera: (callback) => subscribe('hgi:stop-camera', callback),
 }
 
 contextBridge.exposeInMainWorld('bozzDesktop', api)
