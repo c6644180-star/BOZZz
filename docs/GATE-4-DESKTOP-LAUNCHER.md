@@ -52,6 +52,27 @@ Tests cover the fixed app launcher, unsupported IDs/platforms, process-start err
 7. Close an app, refresh, and confirm it disappears from the inventory.
 8. Verify non-Windows platforms display the unsupported message.
 
+
+## Gate 5 — explicit background gesture lifecycle
+
+When a user manually starts the Gesture Lab camera in the Electron desktop app, the renderer asks the trusted main process to disable background throttling for that BOZZ window. This keeps the existing local gesture pipeline responsive while BOZZ is hidden to the tray. It does not start the camera, microphone, or gesture engine automatically.
+
+The tray camera status combines the gesture-camera state with the mini-orb state so one subsystem cannot accidentally hide the other's active indicator. While the gesture camera is active, the tray exposes **Stop camera & gestures**. Selecting it sends a narrow event to the main renderer, which stops the gesture engine, releases the camera stream and microphone gate, stops gesture modes, and switches background throttling back to normal (unless mini mode still needs it).
+
+The Electron preload exposes only a boolean background-activity request and a stop-camera subscription. The main process accepts the request only from the trusted BOZZ main window. It does not accept commands, scripts, window handles, or arbitrary renderer data.
+
+### Gate 5 manual acceptance on Windows
+
+1. Start BOZZ, open Gesture Lab, and explicitly start gestures; grant camera permission only when prompted.
+2. Confirm the tray tooltip/menu reports **Camera: ACTIVE**.
+3. Hide BOZZ to the tray. Move a hand in front of the camera, then restore BOZZ and confirm the local hand-tracking metrics continue updating.
+4. Open the tray menu and select **Stop camera & gestures**.
+5. Confirm the camera preview stops, the camera indicator returns to off, and the gesture engine reports off.
+6. Repeat while mini mode is active; stopping the gesture camera must not break the mini orb's own background lifecycle.
+7. Quit BOZZ and confirm the process exits normally.
+
+The camera is intentionally still active while hidden after the user has started it. The tray stop item is the quick off switch; quitting BOZZ also ends the stream. No hidden startup, wake-word listening, recording, or automatic gesture execution is introduced by this gate.
+
 ## Next increments
 
 1. Add narrow app-specific keyboard/mouse actions only after a separate threat-model review, with per-action approval, visible execution state, cancellation, and verification.
