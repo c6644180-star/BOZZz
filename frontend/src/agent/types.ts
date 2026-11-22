@@ -246,6 +246,18 @@ export interface AgentTaskSummary {
   updated_at: string
 }
 
+export interface AgentActionJournalEntry {
+  id: number
+  step_id: string
+  attempt: number
+  action_type: string
+  action_fingerprint: string
+  state: 'started' | 'completed' | 'failed' | 'unknown'
+  result: Record<string, unknown> | null
+  started_at: string
+  finished_at: string | null
+}
+
 export interface AgentTask extends AgentTaskSummary {
   plan: AgentPlan | null
   steps: AgentStep[]
@@ -262,6 +274,7 @@ export interface AgentTask extends AgentTaskSummary {
   screenshots_allowed: boolean
   screenshot_provider: string | null
   current_application: string
+  action_journal?: AgentActionJournalEntry[]
 }
 
 export interface AgentStatus {
