@@ -125,6 +125,12 @@ export function stopWakeWordListening(): void {
   void stopInternal({ phase: 'off', detail: 'Microphone is off.' })
 }
 
+export function dismissWakeWordRuntimeStatus(): void {
+  if (state.phase === 'detected' || state.phase === 'error') {
+    publish({ phase: 'off', detail: 'Microphone is off.' })
+  }
+}
+
 export async function startWakeWordListening(): Promise<void> {
   if (state.phase === 'starting' || state.phase === 'listening') return
   if (!window.bozzDesktop?.isDesktop) {
