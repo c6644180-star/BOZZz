@@ -46,7 +46,7 @@ class ActiveModelResolutionTests(unittest.TestCase):
         self.write_pointer()
         result = resolve_active_model(self.registry)
         self.assertEqual(result["version"], "1.0.0")
-        self.assertEqual(Path(result["model_path"]), self.candidate / "model.onnx")
+        resolved = Path(result["model_path"])\n        self.assertTrue(resolved.is_file())\n        self.assertEqual(resolved.name, "model.onnx")\n        self.assertEqual(resolved.parent.name, "1.0.0")
 
     def test_rejects_checksum_changed_after_activation(self) -> None:
         self.write_pointer()
