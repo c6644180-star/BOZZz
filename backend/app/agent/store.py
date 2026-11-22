@@ -246,7 +246,107 @@ class AgentStore:
                         task_id,
                     ),
                 )
+                connection.execute(
+                    """
+                    UPDATE agent_action_journal
+                    SET state = 'unknown',
+                        result_json = ?,
+                        finished_at = ?
+                    WHERE task_id = ? AND state = 'started'
+                    """,
+                    (
+                        json.dumps({
+                            "status": "unknown",
+                            "detail": "Backend restarted while the adapter action was in flight. It may have completed; BOZZ did not replay it.",
+                        }, ensure_ascii=False),
+                        updated_at,
+                        task_id,
+                    ),
+                )
         return len(rows)
+
+
+
+    def begin_action(
+        self,
+        *,
+        task_id: str,
+        step_id: str,
+        attempt: int,
+        action_type: str,
+        action_fingerprint: str,
+        started_at: str,
+    ) -> int:
+        """Durably record an adapter action before any external side effect."""
+        with self._db.transaction() as connection:
+            existing = connection.execute(
+                """
+                SELECT action_fingerprint, state FROM agent_action_journal
+                WHERE task_id = ? AND step_id = ? AND attempt = ?
+                """,
+                (task_id, step_id, attempt),
+            ).fetchone()
+            if existing is not None:
+                if existing["action_fingerprint"] != action_fingerprint:
+                    raise RuntimeError("An action journal attempt was reused with different parameters.")
+                raise RuntimeError(
+                    f"This action attempt is already recorded as {existing['state']}; it will not be replayed."
+                )
+            cursor = connection.execute(
+                """
+                INSERT INTO agent_action_journal (
+                    task_id, step_id, attempt, action_type, action_fingerprint,
+                    state, result_json, started_at, finished_at
+                ) VALUES (?, ?, ?, ?, ?, 'started', NULL, ?, NULL)
+                """,
+                (task_id, step_id, attempt, action_type, action_fingerprint, started_at),
+            )
+            return int(cursor.lastrowid)
+
+    def finish_action(
+        self,
+        journal_id: int,
+        *,
+        state: str,
+        result: dict[str, Any],
+        finished_at: str,
+    ) -> None:
+        if state not in ("completed", "failed"):
+            raise ValueError("Action journal final state must be completed or failed.")
+        with self._db.transaction() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE agent_action_journal
+                SET state = ?, result_json = ?, finished_at = ?
+                WHERE id = ? AND state = 'started'
+                """,
+                (state, json.dumps(result, ensure_ascii=False), finished_at, journal_id),
+            )
+            if cursor.rowcount != 1:
+                raise RuntimeError("The action journal entry was not in a writable started state.")
+
+    def list_action_journal(self, task_id: str) -> list[dict[str, Any]]:
+        with self._db.read() as connection:
+            rows = connection.execute(
+                """
+                SELECT id, step_id, attempt, action_type, action_fingerprint,
+                       state, result_json, started_at, finished_at
+                FROM agent_action_journal
+                WHERE task_id = ?
+                ORDER BY id ASC
+                """,
+                (task_id,),
+            ).fetchall()
+        items = []
+        for row in rows:
+            item = dict(row)
+            raw_result = item.pop("result_json")
+            try:
+                item["result"] = json.loads(raw_result) if raw_result else None
+            except json.JSONDecodeError:
+                item["result"] = {"detail": "Stored action result could not be decoded."}
+            items.append(item)
+        return items
 
 
     def list_tasks(self, limit: int = 20) -> list[dict[str, Any]]:
