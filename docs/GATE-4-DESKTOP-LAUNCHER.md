@@ -8,6 +8,12 @@ BOZZ's native tray now offers explicit menu actions for Calculator, Notepad and 
 
 The Settings page now includes a small app launcher. In the installed Electron desktop app, each button first asks the user to confirm, then invokes a narrow preload bridge. The main process validates the sender and app ID again before calling the fixed allowlist helper. In a browser, the controls are unavailable and display that limitation. No AI/chat pathway is connected to this IPC handler.
 
+## BOZZ window intelligence
+
+The Settings page can list and focus only BOZZ-owned windows (the main BOZZ window and the optional mini orb). The main process returns a small metadata snapshot: fixed window ID, title, visibility, focus and minimized state. Focus actions accept only `main` or `mini`, and the UI asks for confirmation first. No external application windows, titles, processes, screenshots, or contents are enumerated or inspected in this milestone.
+
+Automated tests cover inventory filtering, restoring/focusing a minimized BOZZ window, rejecting unknown IDs, and missing-window handling.
+
 ## Boundaries
 
 - Windows only in this milestone; other platforms return an unsupported result.
