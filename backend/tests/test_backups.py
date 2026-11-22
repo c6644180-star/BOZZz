@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 from app.backups.service import BackupValidationError, DatabaseBackupService
-from app.conversations.store import ConversationStore
+from app.conversations.store import ConversationNotFound, ConversationStore
 from app.db.database import Database
 from app.db.store import IntentStore
 from app.identities.service import IdentityService
@@ -45,11 +45,9 @@ class DatabaseBackupTests(unittest.TestCase):
 
         restored_conversations = ConversationStore(reopened, "owner-a", self.identity.id)
         self.assertEqual(restored_conversations.get(self.conversation["id"])["messages"][0]["content"], "original question")
-        self.assertEqual(restored_conversations.list(), [{
-            **restored_conversations.list()[0],
-        }])
+        self.assertEqual(len(restored_conversations.list()), 1)
         self.assertEqual(len(self.backups.list_backups()), 2)
-        with self.assertRaises(Exception):
+        with self.assertRaises(ConversationNotFound):
             restored_conversations.get(extra["id"])
 
     def test_invalid_backup_is_rejected_without_replacing_database(self) -> None:
