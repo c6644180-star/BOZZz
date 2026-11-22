@@ -11,11 +11,12 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Header, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from app.agent.service import (
     AgentApprovalError,
+    AgentIdempotencyConflict,
     AgentDisabled,
     AgentError,
     AgentNotFound,
@@ -69,6 +70,8 @@ class ReliabilityRequest(BaseModel):
 
 
 def _http_error(exc: AgentError) -> HTTPException:
+    if isinstance(exc, AgentIdempotencyConflict):
+        return HTTPException(status_code=409, detail=str(exc))
     if isinstance(exc, AgentNotFound):
         return HTTPException(status_code=404, detail=str(exc))
     if isinstance(exc, AgentApprovalError):
@@ -101,13 +104,17 @@ def update_agent_settings(payload: SettingsRequest) -> dict[str, Any]:
 
 
 @router.post("/tasks")
-def create_agent_task(payload: TaskRequest) -> dict[str, Any]:
+def create_agent_task(
+    payload: TaskRequest,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key", min_length=16, max_length=128),
+) -> dict[str, Any]:
     try:
         return get_agent().create_task(
             payload.task,
             dry_run=payload.dry_run,
             allow_screenshots=payload.allow_screenshots,
             screenshot_provider=payload.screenshot_provider,
+            idempotency_key=idempotency_key,
         )
     except Exception as exc:  # noqa: BLE001
         if isinstance(exc, AgentError):
