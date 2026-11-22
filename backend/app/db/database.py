@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Iterator
 import sqlite3
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS schema_meta (
@@ -148,6 +148,16 @@ CREATE TABLE IF NOT EXISTS agent_tasks (
 );
 
 CREATE INDEX IF NOT EXISTS idx_agent_tasks_created ON agent_tasks(created_at DESC);
+
+-- A stable client key maps one logical task submission to exactly one task.
+-- The request hash prevents accidental key reuse for a different payload.
+CREATE TABLE IF NOT EXISTS agent_idempotency (
+    idempotency_key TEXT PRIMARY KEY,
+    request_hash TEXT NOT NULL,
+    task_id TEXT NOT NULL UNIQUE REFERENCES agent_tasks(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
 
 CREATE TABLE IF NOT EXISTS identities (
     id TEXT PRIMARY KEY,
