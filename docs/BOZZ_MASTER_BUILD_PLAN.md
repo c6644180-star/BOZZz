@@ -80,22 +80,36 @@ A BID (BOZZ Idea ID) preserves the user's original idea and tracks its evolution
 **Exit gate:** restart-safe conversations; identity-isolated memory; deletion verified against the database. Gate 1 is not complete until the remaining unchecked items pass.
 
 ### Gate 2 — Intent and computer-action foundation
-- Typed action registry and schemas.
-- Planner output constrained to registered actions.
-- Permission scopes, risk classification, approval challenges and audit.
-- Executor runs only registered actions; no arbitrary shell/code execution from model output.
-- Idempotency, timeouts, cancellation, kill switch and verification evidence.
+- [x] Typed action schemas reject unknown actions, parameters and invalid value types.
+- [x] Planner output is constrained to registered action IDs and dependency ordering.
+- [x] Deterministic server-side policy assigns action risk tiers; model-supplied tiers cannot lower policy.
+- [x] Tier 3 actions fail closed before adapter execution.
+- [x] Plan approval and per-step approval are separate; approval tokens expire.
+- [x] Pending step approvals now display the exact action and privacy-conscious parameter preview.
+- [x] Approval is fingerprint-bound to the exact action parameters; changed actions invalidate approval and stop the task.
+- [x] Audit events record approval, denial, invalidation, action and verification outcomes.
+- [x] Dry-run, cancellation, timeout, step/time caps, emergency stop and verification-evidence reporting have regression coverage.
+- [ ] Add durable idempotency keys and recovery semantics for interrupted/retried actions.
+- [ ] Add explicit permission scopes for file/app/device adapters before expanding beyond the constrained browser adapter.
+- [ ] Expand end-to-end workflow coverage for the target Windows environment and verify all failure paths.
 
-**Exit gate:** supported workflows run end-to-end; unsupported actions fail closed; every consequential action is attributable and auditable.
+**Exit gate:** supported workflows run end-to-end; unsupported actions fail closed; every consequential action is attributable and auditable. Gate 2 remains open until remaining items and CI pass.
 
 ### Gate 3 — Voice and gesture
-- Wake-word engine chosen through measured offline tests; no 100% reliability claim.
-- Background mode is opt-in and visibly indicates microphone state.
-- Camera is opt-in, visibly indicated, and stops immediately when disabled.
-- Gesture confidence, calibration, debounce, false-trigger and latency benchmarks.
-- Speech/gesture may create plans; they never silently approve risky actions.
+- [x] Audit existing MediaPipe hand-tracking engine, gesture modes, calibration and real-trial diagnostics.
+- [x] Verify camera capture requests video only (audio is explicitly disabled).
+- [x] Verify camera shutdown releases every media track; add regression tests for idempotent stop and track-release failures.
+- [x] Add regression tests for denied camera permission and unavailable camera APIs; verify no stream is retained when startup fails.
+- [x] Keep microphone closed in push-to-talk/manual modes until an explicit user action; add unit tests for the gate.
+- [x] Label the offline BOZZ wake-word engine as unavailable rather than presenting browser speech recognition as an offline detector.
+- [ ] Implement and package a local wake-word model trained specifically for “BOZZ”; verify its licence, model provenance and Windows CPU/RAM cost.
+- [ ] Add a native background/tray runtime so the user can deliberately keep BOZZ running after closing the main window; quitting must stop all sensors.
+- [ ] Add explicit background-listening opt-in, persistent mic indicator, OS permission handling, pause/disable controls and a wake event handoff to Electron.
+- [ ] Gesture confidence, calibration, debounce, false-trigger and latency benchmarks on the target Windows PC.
+- [ ] Test gesture operation in Mini Orb mode, camera-off behaviour, camera removal, app quit and restart.
+- [ ] Speech/gesture may create plans; they never silently approve risky actions or bypass Gate 2.
 
-**Exit gate:** repeatable tests on the target Windows PC, sensor-off tests and manual user acceptance.
+**Exit gate:** a real local “BOZZ” wake-word model, explicit sensor consent and visible runtime indicators; repeatable Windows tests for wake false activations, gesture hit/false-trigger rates and latency; sensor-off and quit tests. No 100% accuracy claim.
 
 ### Gate 4 — Desktop and application workflows
 - Windows desktop adapter with allowlisted actions.
@@ -166,13 +180,15 @@ A BID (BOZZ Idea ID) preserves the user's original idea and tracks its evolution
 - Gate 1 work is being developed separately on `feat/gate-1-persistence`, based on the Gate 0 repair branch.
 - Gate 1 currently implements durable active identity selection, schema-v4 backfill, owner/status validation, archive/delete fallback, an active-identity API endpoint and Identity Manager status display.
 - Gate 1 still requires its own CI run. No passing result is claimed until that run completes.
+- Gate 2 implementation is being developed on `feat/gate-2-action-approval`, based on the Gate 1 branch; this preserves the staged dependency and does not change `main`.
+- Gate 2 changes include action-bound approval challenges and an explicit action preview in the approval card. Gate 2 CI passed on commit `b013f4266d7be6521078de4441495ad305619757` (backend syntax/import/regression tests and frontend tests/production build).
+- Gate 3 work is being developed on `feat/gate-3-voice-gesture`, based on the Gate 2 branch. Existing MediaPipe gesture controls and browser speech input are being hardened; a trained local “BOZZ” wake-word model and a native tray/background runtime are not yet present.
 - Existing repository UI/modules vary in maturity; the existence of a file or page is not proof of end-to-end reliability.
 - PR #1 remains a draft. Main has not been changed or merged.
 
 ## Immediate next work
 
-1. Run Gate 1 CI and fix every regression it exposes.
-2. Review memory storage and retrieval to bind facts to identity boundaries.
-3. Add durable conversation/message persistence with owner and identity scope.
-4. Add database backup/restore and recovery tests.
-5. Only then expand voice, gesture and desktop execution beyond the existing bounded workflows.
+1. Complete and verify Gate 1, including identity-isolated memory, conversation persistence and backup/restore.
+2. Run Gate 2 CI and resolve any failures in action-bound approvals and preview rendering.
+3. Add durable idempotency and recovery semantics before expanding the executor.
+4. Keep desktop, voice and gesture inputs behind the same typed action and approval boundary.

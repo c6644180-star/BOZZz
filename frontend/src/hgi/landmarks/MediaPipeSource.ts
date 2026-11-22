@@ -194,14 +194,27 @@ export class MediaPipeSource implements LandmarkSource {
   stop(): void {
     this.running = false
     this.pending = false
-    if (this.video) {
-      if (typeof this.video.cancelVideoFrameCallback === 'function' && this.frameCallbackId) {
-        this.video.cancelVideoFrameCallback(this.frameCallbackId)
+
+    const video = this.video
+    this.video = null
+    if (video) {
+      try {
+        if (typeof video.cancelVideoFrameCallback === 'function' && this.frameCallbackId) {
+          video.cancelVideoFrameCallback(this.frameCallbackId)
+        }
+        if (this.rafId) cancelAnimationFrame(this.rafId)
+        video.pause()
+      } catch {
+        // Releasing the camera stream below takes priority over video cleanup.
+      } finally {
+        try {
+          video.srcObject = null
+        } catch {
+          // The stream tracks are still stopped below.
+        }
       }
-      if (this.rafId) cancelAnimationFrame(this.rafId)
-      this.video.pause()
-      this.video.srcObject = null
     }
+
     this.frameCallbackId = 0
     this.rafId = 0
     this.stopVisibility?.()
@@ -209,12 +222,19 @@ export class MediaPipeSource implements LandmarkSource {
     try {
       this.detector?.close()
     } catch {
-      // detector may already be closed
+      // Detector cleanup must not prevent camera release.
     }
     this.detector = null
-    this.stream?.getTracks().forEach((track) => track.stop())
+
+    const stream = this.stream
     this.stream = null
-    this.video = null
+    stream?.getTracks().forEach((track) => {
+      try {
+        track.stop()
+      } catch {
+        // Continue releasing any remaining tracks.
+      }
+    })
     this.listeners.clear()
   }
 }

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { UndoStack } from '../undo'
 import { classifyLighting, landmarkCoverage } from '../lighting'
 import { CpuMonitor, computeMainThreadLoad } from '../cpu'
-import { pttLatencyMs, resolveVoiceMode } from '../voice'
+import { canOpenMicrophone, pttLatencyMs, resolveVoiceMode, voiceModeNeedsBackgroundListening } from '../voice'
 import { getWakeWordEngine, wakeWordStatus } from '../wakeWord'
 
 describe('undo stack', () => {
@@ -69,6 +69,15 @@ describe('voice modes', () => {
     expect(pttLatencyMs(1000, 1420)).toBe(420)
     expect(pttLatencyMs(1000, 900)).toBeNull()
     expect(pttLatencyMs(NaN, 900)).toBeNull()
+  })
+
+  it('keeps the microphone closed until an explicit action outside wake-word mode', () => {
+    expect(canOpenMicrophone('push-to-talk', false)).toBe(false)
+    expect(canOpenMicrophone('manual', false)).toBe(false)
+    expect(canOpenMicrophone('push-to-talk', true)).toBe(true)
+    expect(canOpenMicrophone('manual', true)).toBe(true)
+    expect(voiceModeNeedsBackgroundListening('wake-word')).toBe(true)
+    expect(voiceModeNeedsBackgroundListening('push-to-talk')).toBe(false)
   })
 })
 

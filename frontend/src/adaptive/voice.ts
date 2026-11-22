@@ -6,8 +6,8 @@ export const VOICE_MODE_COPY: Record<VoiceMode, { label: string; detail: string 
     detail: 'Hold the key to listen, release to send. The microphone is closed at all other times.',
   },
   'wake-word': {
-    label: 'Wake word (experimental)',
-    detail: 'After the mic is opened, BOZZ keeps listening until it hears “BOZZ …”. Uses browser speech; no offline wake-word engine is installed.',
+    label: 'Wake word (not installed)',
+    detail: 'Requires a trained local BOZZ wake-word model. No background microphone listener is started until that engine is installed and explicitly enabled.',
   },
   manual: {
     label: 'Manual',
@@ -23,8 +23,9 @@ export function resolveVoiceMode(settings: { voiceMode?: unknown; wakeWord?: boo
 }
 
 export function canOpenMicrophone(mode: VoiceMode, hasManualPress: boolean): boolean {
-  if (mode === 'manual') return hasManualPress
-  return true
+  // Only a configured wake-word engine may open the mic without a manual
+  // action. Push-to-talk and manual modes both require an explicit user press.
+  return mode === 'wake-word' || hasManualPress
 }
 
 export function pttLatencyMs(releasedAt: number, finalisedAt: number): number | null {

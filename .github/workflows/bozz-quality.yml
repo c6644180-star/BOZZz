@@ -6,6 +6,8 @@ on:
   push:
     branches:
       - feat/gate-1-persistence
+      - feat/gate-2-action-approval
+      - feat/gate-3-voice-gesture
   workflow_dispatch:
 
 permissions:
@@ -56,6 +58,9 @@ jobs:
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
+      - name: Check Electron main-process syntax
+        working-directory: frontend
+        run: node --check electron/main.cjs
       - name: Run frontend tests
         working-directory: frontend
         run: npm test -- --passWithNoTests
