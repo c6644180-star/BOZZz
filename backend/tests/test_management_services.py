@@ -63,7 +63,7 @@ class ManagementServiceTests(unittest.TestCase):
         self.assertEqual(updated["visual_preferences"], {"theme": "light"})
         self.assertEqual(len(self.preferences.list_preference_profiles(owner_id="owner-a")), 1)
         with self.assertRaises(PermissionError):
-            self.preferences.apply_preference_change(profile["id"])
+            self.preferences.apply_preference_change(profile["id"], caller_owner_id="owner-a")
         reset = self.preferences.reset_preference_profile(
             profile["id"], caller_owner_id="owner-a"
         )
