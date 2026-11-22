@@ -19,8 +19,8 @@ test('inventory parser returns supported app labels without titles, handles or p
     { processId: 104, processName: 'paint', handle: 'not-a-handle' },
   ]))
   assert.deepEqual(rows, [
-    { processId: 101, handle: 9001, appId: 'chrome', appName: 'Google Chrome' },
-    { processId: 102, handle: 9002, appId: 'notepad', appName: 'Notepad' },
+    { processId: 101, handle: 9001, processName: 'chrome', appId: 'chrome', appName: 'Google Chrome' },
+    { processId: 102, handle: 9002, processName: 'notepad', appId: 'notepad', appName: 'Notepad' },
   ])
 })
 
@@ -62,7 +62,9 @@ test('focus rejects guessed IDs and consumes a valid token after one use', async
   assert.equal(calls.length, 1)
   assert.equal((await registry.focus('known-token')).ok, true)
   assert.equal(calls.length, 2)
-  assert.match(calls[1].args.at(-1), /4444/)
+  assert.match(calls[1].args.at(-1), /Get-Process -Id 22/)
+  assert.match(calls[1].args.at(-1), /ProcessName -ne 'notepad'/)
+  assert.match(calls[1].args.at(-1), /\[Int64\]4444/)
   assert.equal((await registry.focus('known-token')).ok, false)
   assert.equal(calls.length, 2)
 })
