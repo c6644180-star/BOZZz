@@ -86,6 +86,141 @@ class AgentStore:
         payload["steps"] = [dict(item) for item in steps]
         return payload
 
+
+    def get_idempotency(self, idempotency_key: str, request_hash: str) -> str | None:
+        with self._db.read() as connection:
+            row = connection.execute(
+                "SELECT request_hash, task_id FROM agent_idempotency WHERE idempotency_key = ?",
+                (idempotency_key,),
+            ).fetchone()
+        if row is None:
+            return None
+        if row["request_hash"] != request_hash:
+            raise AgentIdempotencyConflict(
+                "This idempotency key was already used for a different task request."
+            )
+        return str(row["task_id"])
+
+    def reserve_task(
+        self,
+        *,
+        idempotency_key: str,
+        request_hash: str,
+        task_id: str,
+        task: str,
+        dry_run: bool,
+        provider: str | None,
+        model: str | None,
+        created_at: str,
+    ) -> tuple[str, bool]:
+        """Atomically reserve a logical task request before planning begins."""
+        with self._db.transaction() as connection:
+            existing = connection.execute(
+                "SELECT request_hash, task_id FROM agent_idempotency WHERE idempotency_key = ?",
+                (idempotency_key,),
+            ).fetchone()
+            if existing is not None:
+                if existing["request_hash"] != request_hash:
+                    raise AgentIdempotencyConflict(
+                        "This idempotency key was already used for a different task request."
+                    )
+                return str(existing["task_id"]), False
+            connection.execute(
+                """
+                INSERT INTO agent_tasks (
+                    id, task, state, dry_run, plan_json, report_json,
+                    provider, model, planner, created_at, updated_at
+                ) VALUES (?, ?, 'planning', ?, NULL, NULL, ?, ?, NULL, ?, ?)
+                """,
+                (task_id, task, int(dry_run), provider, model, created_at, created_at),
+            )
+            connection.execute(
+                """
+                INSERT INTO agent_idempotency (
+                    idempotency_key, request_hash, task_id, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?)
+                """,
+                (idempotency_key, request_hash, task_id, created_at, created_at),
+            )
+        return task_id, True
+
+    def recover_interrupted_tasks(self, updated_at: str) -> int:
+        """Fail closed after a process restart; never replay uncertain external actions."""
+        terminal = ("done", "failed", "stopped", "cancelled")
+        placeholders = ",".join("?" for _ in terminal)
+        with self._db.transaction() as connection:
+            rows = connection.execute(
+                f"SELECT id, task, dry_run FROM agent_tasks WHERE state NOT IN ({placeholders})",
+                terminal,
+            ).fetchall()
+            for row in rows:
+                task_id = str(row["id"])
+                step_rows = connection.execute(
+                    "SELECT step_id, status, level, detail FROM agent_steps WHERE task_id = ? ORDER BY id",
+                    (task_id,),
+                ).fetchall()
+                steps = []
+                for step in step_rows:
+                    status = str(step["status"])
+                    if status not in ("verified", "blocked", "failed", "cancelled", "skipped"):
+                        status = "interrupted"
+                    steps.append({
+                        "id": str(step["step_id"]),
+                        "status": status,
+                        "level": "unknown" if status == "interrupted" else str(step["level"]),
+                        "detail": (
+                            "Backend restarted before this step reached a durable final result. "
+                            "BOZZ did not retry it; inspect the target application before taking further action."
+                            if status == "interrupted" else str(step["detail"])
+                        ),
+                        "verification": None,
+                    })
+                summary = (
+                    "BOZZ restarted while this task was unfinished. The task was not resumed or retried "
+                    "because the outcome of an in-flight external action may be unknown. Inspect the target "
+                    "application before manually starting a new task."
+                )
+                report = {
+                    "status": "Interrupted",
+                    "summary": summary,
+                    "result_level": "unknown",
+                    "verification": {"ok": False, "detail": summary, "source": "none"},
+                    "steps": steps,
+                    "elapsed_ms": 0,
+                    "steps_executed": sum(1 for step in steps if step["status"] != "interrupted"),
+                    "injections_ignored": 0,
+                    "dry_run": bool(row["dry_run"]),
+                    "screenshots_shared": False,
+                    "notes": ["Automatic recovery is disabled to prevent duplicate external actions."],
+                }
+                connection.execute(
+                    """
+                    UPDATE agent_tasks
+                    SET state = 'failed', report_json = ?, updated_at = ?
+                    WHERE id = ?
+                    """,
+                    (json.dumps(report, ensure_ascii=False), updated_at, task_id),
+                )
+                connection.execute(
+                    """
+                    UPDATE agent_steps
+                    SET status = 'interrupted', level = 'unknown',
+                        detail = ?, updated_at = ?
+                    WHERE task_id = ?
+                      AND status NOT IN ('verified', 'blocked', 'failed', 'cancelled', 'skipped')
+                    """,
+                    (
+                        "Backend restarted before a durable final result. Not retried; inspect the target app.",
+                        updated_at,
+                        task_id,
+                    ),
+                )
+        return len(rows)
+
+
+class AgentIdempotencyConflict(ValueError):
+    """A client idempotency key was reused with a different request payload."""
+
     def list_tasks(self, limit: int = 20) -> list[dict[str, Any]]:
         with self._db.read() as connection:
             rows = connection.execute(
