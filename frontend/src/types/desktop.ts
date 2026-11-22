@@ -76,6 +76,8 @@ export interface DesktopBridge {
   setMode: (mode: MiniMode) => void
   getMode: () => Promise<MiniMode>
   setBackgroundActivity: (active: boolean) => Promise<{ ok: boolean; backgroundActive?: boolean; reason?: string }>
+  setWakeWordActivity: (active: boolean) => Promise<{ ok: boolean; backgroundActive?: boolean; reason?: string }>
+  showMain: () => Promise<{ ok: boolean; reason?: string }>
   launchApp: (appId: DesktopAppId) => Promise<DesktopLaunchResult>
   listManagedWindows: () => Promise<ManagedDesktopWindow[]>
   focusManagedWindow: (id: 'main' | 'mini') => Promise<ManagedWindowFocusResult>
@@ -92,6 +94,7 @@ export interface DesktopBridge {
   onMiniMode: (listener: (mode: { mode: MiniMode }) => void) => () => void
   onMiniAction: (listener: (action: MiniAction) => void) => () => void
   onStopCamera: (listener: () => void) => () => void
+  onStopWakeWord: (listener: () => void) => () => void
 }
 
 declare global {
