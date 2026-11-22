@@ -75,6 +75,7 @@ export interface DesktopBridge {
   isDesktop: true
   setMode: (mode: MiniMode) => void
   getMode: () => Promise<MiniMode>
+  setBackgroundActivity: (active: boolean) => Promise<{ ok: boolean; backgroundActive?: boolean; reason?: string }>
   launchApp: (appId: DesktopAppId) => Promise<DesktopLaunchResult>
   listManagedWindows: () => Promise<ManagedDesktopWindow[]>
   focusManagedWindow: (id: 'main' | 'mini') => Promise<ManagedWindowFocusResult>
