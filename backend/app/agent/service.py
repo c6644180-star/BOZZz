@@ -972,9 +972,14 @@ class AgentService:
                 self._condition.wait(timeout=min(0.5, remaining))
             result = record.approval_result
             record.approval_result = None
+            # Cancellation may have cleared the pending approval and notified
+            # this waiter. Never overwrite the terminal stopped state with
+            # "running" after an approval challenge has been invalidated.
+            if record.cancel.is_set():
+                return False
             if result is None:
                 return None
-            record.state = "running"
+            record.state = "running" if result else "stopped"
             return bool(result)
 
     # ------------------------------------------------------------------- helpers
