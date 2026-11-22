@@ -2,7 +2,7 @@
 
 BOZZ is a local-first personal AI environment: a React desktop command center, a small FastAPI backend, a replaceable local-model adapter, and a permissioned action workflow. It is built in tested milestones; planned capabilities are never presented as connected services.
 
-Current verified state: **2026-11-09**. Backend suite: **108 tests passing (1 skipped)**. Frontend: **26 Vitest tests, lint and production build passing**.
+Current integration state: **2026-11-22**. Gates 0–14 have been merged into `main`. Gate 14 prepares the local training configuration; **no trained BOZZ wake-word classifier is bundled or claimed**. Check the `BOZZ quality checks` workflow on `main` before treating this integration as release-verified.
 
 ## What works now (implemented and tested)
 
