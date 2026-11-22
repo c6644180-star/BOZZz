@@ -73,9 +73,11 @@ A BID (BOZZ Idea ID) preserves the user's original idea and tracks its evolution
 - [x] Upgrade existing schema-v4 databases and backfill a deterministic active identity.
 - [x] Expose the active identity through the API and show it in Identity Manager.
 - [x] Add regression tests for persistence across database connections, owner isolation, archive/delete fallback and schema upgrade.
-- [ ] Bind memory records and retrieval to the active identity; verify cross-identity isolation.
-- [ ] Persist conversations/messages with identity ownership and implement export/delete.
-- [ ] Add tested database backup/restore and recovery flow.
+- [ ] Bind memory records, settings, duplicate checks, exports and retrieval to both the local owner and persisted active identity. The current `memory_facts` table has no owner/identity columns and the current `memory_settings` table is global; migrate existing facts deterministically to the owner's active identity without exposing them to other identities.
+- [ ] Persist conversations/messages in SQLite with owner + identity scope, stable conversation IDs, bounded message sizes, safe ordering, and explicit export/delete. Current chat history is browser `localStorage` only and is not durable across browser profiles/devices.
+- [ ] Ensure chat loads only the selected identity's persisted conversation and memory context; switching identity must not leak prior conversation or memory into the new identity.
+- [ ] Add migration tests from existing schema-v5 databases, including legacy memory backfill, no-active-identity behaviour, and restart persistence.
+- [ ] Add tested database backup/restore and recovery flow using SQLite's backup API (including WAL-safe backups), validation before restore, and preservation of the previous database on failed restore.
 
 **Exit gate:** restart-safe conversations; identity-isolated memory; deletion verified against the database. Gate 1 is not complete until the remaining unchecked items pass.
 
