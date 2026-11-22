@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -8,6 +9,7 @@ from pydantic import BaseModel, Field
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.db.database import Database
+from app.db.store import IntentStore
 from app.identities.service import IdentityService, _iso_now
 from app.modules import PermissionDenied
 from app.permissions.policy import assess
@@ -29,7 +31,10 @@ def get_owner_id() -> str:
 
 def _get_service() -> IdentityService:
     settings = get_settings()
-    return IdentityService(Database(settings.database_path))
+    db = Database(settings.database_path)
+    db.initialize()
+    store = IntentStore(db)
+    return IdentityService(store)
 
 
 class CreateIdentityRequest(BaseModel):

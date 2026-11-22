@@ -468,38 +468,38 @@ class IntentStore:
         testing_evidence: str | None = None,
     ) -> None:
         with self._db.transaction() as connection:
-        connection.execute(
-            """
-            UPDATE bids
-            SET
-                title = COALESCE(?, title),
-                description = COALESCE(?, description),
-                ai_interpretation = COALESCE(?, ai_interpretation),
-                intended_outcome = COALESCE(?, intended_outcome),
-                category = COALESCE(?, category),
-                related_project = COALESCE(?, related_project),
-                status = COALESCE(?, status),
-                version = COALESCE(?, version),
-                suggestions = COALESCE(?, suggestions),
-                approved_modifications = COALESCE(?, approved_modifications),
-                dependencies = COALESCE(?, dependencies),
-                related_ideas = COALESCE(?, related_ideas),
-                sharing_permissions = COALESCE(?, sharing_permissions),
-                implementation_references = COALESCE(?, implementation_references),
-                testing_evidence = COALESCE(?, testing_evidence),
-                updated_timestamp = ?
-            WHERE bid_id = ?
-            """,
-            (
-                title, description, ai_interpretation, intended_outcome,
-                category, related_project, status, version,
-                suggestions, approved_modifications, dependencies,
-                related_ideas, sharing_permissions, implementation_references,
-                testing_evidence,
-                self._iso_now(),
-                bid_id,
-            ),
-        )
+            connection.execute(
+                """
+                UPDATE bids
+                SET
+                    title = COALESCE(?, title),
+                    description = COALESCE(?, description),
+                    ai_interpretation = COALESCE(?, ai_interpretation),
+                    intended_outcome = COALESCE(?, intended_outcome),
+                    category = COALESCE(?, category),
+                    related_project = COALESCE(?, related_project),
+                    status = COALESCE(?, status),
+                    version = COALESCE(?, version),
+                    suggestions = COALESCE(?, suggestions),
+                    approved_modifications = COALESCE(?, approved_modifications),
+                    dependencies = COALESCE(?, dependencies),
+                    related_ideas = COALESCE(?, related_ideas),
+                    sharing_permissions = COALESCE(?, sharing_permissions),
+                    implementation_references = COALESCE(?, implementation_references),
+                    testing_evidence = COALESCE(?, testing_evidence),
+                    updated_timestamp = ?
+                WHERE bid_id = ?
+                """,
+                (
+                    title, description, ai_interpretation, intended_outcome,
+                    category, related_project, status, version,
+                    suggestions, approved_modifications, dependencies,
+                    related_ideas, sharing_permissions, implementation_references,
+                    testing_evidence,
+                    self._iso_now(),
+                    bid_id,
+                ),
+            )
 
     def search_bids_by_description(self, query: str, owner_id: str | None = None) -> list[dict[str, Any]]:
         with self._db.read() as connection:
