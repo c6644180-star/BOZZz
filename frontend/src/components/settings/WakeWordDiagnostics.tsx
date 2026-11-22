@@ -80,7 +80,7 @@ export function WakeWordDiagnostics() {
   }
 
   async function start() {
-    if (!report?.engine_loadable || !settings.backgroundListeningConsent || runtime.phase === 'starting' || runtime.phase === 'listening') return
+    if (!report?.engine_loadable || !settings.backgroundListeningConsent || runtime.phase === 'listening') return
     if (!window.confirm(
       'Start local wake-word listening now? BOZZ will request microphone permission. The mic stays active while BOZZ is hidden until you stop it or the wake phrase is detected. Audio is sent only to the local BOZZ backend, is not saved, and is not uploaded. Detection restores BOZZ but does not start command recording.',
     )) return
@@ -156,7 +156,7 @@ export function WakeWordDiagnostics() {
             disabled={!report?.engine_loadable || !settings.backgroundListeningConsent || busy !== null || runtime.phase === 'starting'}
             onClick={() => void start()}
           >
-            {runtime.phase === 'starting' ? 'Starting…' : 'Start local wake-word listener'}
+            Start local wake-word listener
           </button>
         )}
         {!settings.backgroundListeningConsent && (
