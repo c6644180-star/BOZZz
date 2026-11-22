@@ -52,6 +52,11 @@ const api = {
     return mode === 'mini' ? 'mini' : 'full'
   },
   getMediaAccessStatus: async () => ipcRenderer.invoke('privacy:get-media-access'),
+  listManagedWindows: async () => ipcRenderer.invoke('desktop:list-managed-windows'),
+  focusManagedWindow: async (id) => {
+    if (id !== 'main' && id !== 'mini') return { ok: false, reason: 'Unknown BOZZ window.' }
+    return ipcRenderer.invoke('desktop:focus-managed-window', id)
+  },
   launchApp: async (appId) => {
     if (!['calculator', 'notepad', 'paint'].includes(appId)) return { ok: false, reason: 'Unsupported application.' }
     return ipcRenderer.invoke('desktop:launch-app', appId)
