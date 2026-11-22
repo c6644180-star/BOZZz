@@ -297,9 +297,9 @@ export function ModelIntelligencePanel(props: ModelIntelligencePanelProps) {
         `Here is a compact summary of a local 3D model. It contains only parsed hierarchy and bounding-box data, no images. ` +
         `Suggest a short, useful label for parts with generic names. You may be wrong; say so when evidence is weak. ` +
         `Reply with plain lines "nodePath: label — reason".\n\n${payloadText}`,
-        [],
+        null,
       )
-      setAiAnswer(reply)
+      setAiAnswer(reply.reply)
     } catch (caught) {
       setAiAnswer(caught instanceof Error ? `AI request failed: ${caught.message}` : 'AI request failed.')
     } finally {
