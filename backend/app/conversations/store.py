@@ -103,7 +103,7 @@ class ConversationStore:
             messages = connection.execute(
                 """SELECT id, role, content, created_at FROM conversation_messages
                    WHERE conversation_id = ? AND owner_id = ? AND identity_id = ?
-                   ORDER BY created_at ASC, id ASC""",
+                   ORDER BY rowid ASC""",
                 (conversation_id, self.owner_id, self.identity_id),
             ).fetchall()
         return {"id": row["id"], "title": row["title"], "created_at": row["created_at"],
@@ -115,7 +115,7 @@ class ConversationStore:
             rows = connection.execute(
                 """SELECT role, content FROM conversation_messages
                    WHERE conversation_id = ? AND owner_id = ? AND identity_id = ?
-                   ORDER BY created_at DESC, id DESC LIMIT ?""",
+                   ORDER BY rowid DESC LIMIT ?""",
                 (conversation_id, self.owner_id, self.identity_id, max(1, min(limit, 24))),
             ).fetchall()
         return [{"role": row["role"], "content": row["content"]} for row in reversed(rows)]
