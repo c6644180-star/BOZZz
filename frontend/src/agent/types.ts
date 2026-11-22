@@ -13,7 +13,7 @@ export type AgentState =
   | 'stopped'
   | 'cancelled'
 
-export type AgentResultLevel = 'attempted' | 'accepted' | 'completed' | 'verified' | 'none'
+export type AgentResultLevel = 'attempted' | 'accepted' | 'completed' | 'verified' | 'none' | 'unknown'
 
 export type AgentStepStatus =
   | 'pending'
@@ -26,6 +26,7 @@ export type AgentStepStatus =
   | 'failed'
   | 'skipped'
   | 'cancelled'
+  | 'interrupted'
 
 export interface AgentSettings {
   enabled: boolean
