@@ -50,28 +50,31 @@ class DatabaseBackupService:
             raise BackupValidationError("Backup file is missing or empty.")
         connection = sqlite3.connect(str(path), timeout=10.0)
         try:
-            result = connection.execute("PRAGMA integrity_check").fetchone()
-            if not result or result[0] != "ok":
-                raise BackupValidationError("SQLite integrity check failed.")
-            tables = {
-                row[0] for row in connection.execute(
-                    "SELECT name FROM sqlite_master WHERE type = 'table'"
-                ).fetchall()
-            }
-            if not {"schema_meta", "identities"}.issubset(tables):
-                raise BackupValidationError("This file is not a valid BOZZ database.")
-            version_row = connection.execute(
-                "SELECT value FROM schema_meta WHERE key = 'version'"
-            ).fetchone()
-            if not version_row:
-                raise BackupValidationError("The backup has no BOZZ schema version.")
             try:
-                version = int(version_row[0])
-            except (TypeError, ValueError) as exc:
-                raise BackupValidationError("The backup schema version is invalid.") from exc
-            if version < 4:
-                raise BackupValidationError("The backup schema is too old to restore safely.")
-            return {"schema_version": version, "tables": len(tables)}
+                result = connection.execute("PRAGMA integrity_check").fetchone()
+                if not result or result[0] != "ok":
+                    raise BackupValidationError("SQLite integrity check failed.")
+                tables = {
+                    row[0] for row in connection.execute(
+                        "SELECT name FROM sqlite_master WHERE type = 'table'"
+                    ).fetchall()
+                }
+                if not {"schema_meta", "identities"}.issubset(tables):
+                    raise BackupValidationError("This file is not a valid BOZZ database.")
+                version_row = connection.execute(
+                    "SELECT value FROM schema_meta WHERE key = 'version'"
+                ).fetchone()
+                if not version_row:
+                    raise BackupValidationError("The backup has no BOZZ schema version.")
+                try:
+                    version = int(version_row[0])
+                except (TypeError, ValueError) as exc:
+                    raise BackupValidationError("The backup schema version is invalid.") from exc
+                if version < 4:
+                    raise BackupValidationError("The backup schema is too old to restore safely.")
+                return {"schema_version": version, "tables": len(tables)}
+            except sqlite3.DatabaseError as exc:
+                raise BackupValidationError("The selected file is not a readable SQLite database.") from exc
         finally:
             connection.close()
 
