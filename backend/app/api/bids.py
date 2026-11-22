@@ -254,6 +254,8 @@ def edit_bid(bid_id: str, payload: EditBidRequest) -> dict[str, Any]:
             "original_title": record["original_title"],
             "original_description": record["original_description"],
         }
+    except HTTPException:
+        raise
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except Exception as exc:
