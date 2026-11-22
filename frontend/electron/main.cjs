@@ -68,6 +68,7 @@ let lastPauseKey = ''
 let emergencyShortcutRegistered = false
 let tray = null
 let isQuitting = false
+let gestureCameraActive = false
 
 function isFromMain(event) {
   return Boolean(mainWindow && !mainWindow.isDestroyed() && event.sender === mainWindow.webContents)
@@ -89,7 +90,7 @@ function sendMain(channel, payload) {
 
 function updateMainBackgroundActivity() {
   return setBackgroundActivity(mainWindow, {
-    cameraActive: lastState.cameraActive,
+    cameraActive: lastState.cameraActive || gestureCameraActive,
     miniMode: modeState.mode === 'mini',
   })
 }
@@ -135,7 +136,7 @@ function hardenWindow(win) {
 function refreshTrayStatus() {
   if (!tray) return
   const mic = lastState.listening ? 'ACTIVE' : 'off'
-  const camera = lastState.cameraActive ? 'ACTIVE' : 'off'
+  const camera = lastState.cameraActive || gestureCameraActive ? 'ACTIVE' : 'off'
   tray.setToolTip(`BOZZ — Microphone: ${mic} · Camera: ${camera}`)
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: `Microphone: ${mic}`, enabled: false },
@@ -454,7 +455,7 @@ ipcMain.on('mini:set-mode', (event, mode) => {
 ipcMain.handle('desktop:set-background-activity', (event, active) => {
   if (!isFromMain(event)) return { ok: false, reason: 'Untrusted desktop request.' }
   if (typeof active !== 'boolean') return { ok: false, reason: 'Background activity must be a boolean.' }
-  lastState = { ...lastState, cameraActive: active }
+  gestureCameraActive = active
   refreshTrayStatus()
   return updateMainBackgroundActivity()
 })
