@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { desktopBridge } from '../services/desktopBridge'
-import type { DesktopAppId } from '../types/desktop'
+import { desktopBridge } from '../../services/desktopBridge'
+import type { DesktopAppId } from '../../types/desktop'
 
 const APPS: { id: DesktopAppId; label: string; detail: string }[] = [
   { id: 'calculator', label: 'Calculator', detail: 'Windows Calculator' },
