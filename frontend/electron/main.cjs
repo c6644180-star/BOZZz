@@ -1,6 +1,6 @@
 'use strict'
 
-const { app, BrowserWindow, Menu, Tray, nativeImage, globalShortcut, ipcMain, powerMonitor, screen } = require('electron')
+const { app, BrowserWindow, Menu, Tray, nativeImage, globalShortcut, ipcMain, powerMonitor, screen, systemPreferences } = require('electron')
 const path = require('node:path')
 const { initialState, reduceMode } = require('./mini/state.cjs')
 const {
@@ -436,6 +436,29 @@ ipcMain.on('mini:set-mode', (event, mode) => {
 ipcMain.handle('mini:get-mode', (event) => {
   if (!isFromMain(event) && !isFromMini(event)) return 'full'
   return modeState.mode
+})
+
+// Read-only native OS privacy status. This does not request permission or open a sensor.
+ipcMain.handle('privacy:get-media-access', (event) => {
+  if (!isFromMain(event)) {
+    return { platform: process.platform, microphone: 'unknown', camera: 'unknown', available: false }
+  }
+  const readStatus = (mediaType) => {
+    try {
+      const status = systemPreferences.getMediaAccessStatus(mediaType)
+      return ['not-determined', 'granted', 'denied', 'restricted', 'unknown'].includes(status)
+        ? status
+        : 'unknown'
+    } catch {
+      return 'unknown'
+    }
+  }
+  return {
+    platform: process.platform,
+    microphone: readStatus('microphone'),
+    camera: readStatus('camera'),
+    available: process.platform === 'win32' || process.platform === 'darwin',
+  }
 })
 
 ipcMain.on('mini:open-full', (event) => {
