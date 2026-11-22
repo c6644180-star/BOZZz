@@ -23,7 +23,6 @@ export const STATE_LABELS: Record<AgentState, string> = {
   failed: 'Failed',
   stopped: 'Stopped',
   cancelled: 'Cancelled',
-  interrupted: 'Interrupted — inspect the target app',
 }
 
 export const STEP_STATUS_LABELS: Record<AgentStepStatus, string> = {
@@ -37,6 +36,7 @@ export const STEP_STATUS_LABELS: Record<AgentStepStatus, string> = {
   failed: 'Failed',
   skipped: 'Skipped',
   cancelled: 'Cancelled',
+  interrupted: 'Interrupted — inspect the target app',
 }
 
 export const RESULT_LEVEL_LABELS: Record<AgentResultLevel, string> = {
