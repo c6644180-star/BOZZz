@@ -11,6 +11,7 @@ const {
 } = require('./mini/ipc.cjs')
 const { clampToWorkArea, dockPoint, randomTarget, stepToward } = require('./mini/wander.cjs')
 const { computePauseReasons, shouldPauseAnimation } = require('./mini/pause.cjs')
+const { launchDesktopApp } = require('./desktopApps.cjs')
 
 const WINDOW_SIZES = {
   small: { width: 240, height: 250 },
@@ -128,6 +129,10 @@ function refreshTrayStatus() {
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: `Microphone: ${mic}`, enabled: false },
     { label: `Camera: ${camera}`, enabled: false },
+    { type: 'separator' },
+    { label: 'Open Calculator', click: () => launchDesktopApp('calculator') },
+    { label: 'Open Notepad', click: () => launchDesktopApp('notepad') },
+    { label: 'Open Paint', click: () => launchDesktopApp('paint') },
     { type: 'separator' },
     { label: 'Open BOZZ', click: () => showMainWindow() },
     { type: 'separator' },
