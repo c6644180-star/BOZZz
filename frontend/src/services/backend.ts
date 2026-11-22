@@ -1,4 +1,4 @@
-import type { AIProviderStatus, ChatMessage, ConnStatus } from '../types/bozz'
+import type { AIProviderStatus, ConnStatus } from '../types/bozz'
 
 const HEALTH_URL = '/api/health'
 
