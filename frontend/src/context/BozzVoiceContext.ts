@@ -24,6 +24,7 @@ export interface BozzVoice {
   orbState: OrbState
   caption: string
   messages: ChatMessage[]
+  conversationId: string | null
   settings: VoiceSettings
   tts: VoiceStatus
   ttsServer: TTSServerStatus
@@ -41,6 +42,7 @@ export interface BozzVoice {
   pushToTalkEnd: () => void
   updateSettings: (patch: Partial<VoiceSettings>) => void
   resetConversation: () => void
+  openConversation: (id: string) => Promise<void>
 }
 
 export const BozzVoiceContext = createContext<BozzVoice | null>(null)
